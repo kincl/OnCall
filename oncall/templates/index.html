@@ -7,54 +7,105 @@
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.min.js') }}'></script>
 <script>
+    $(document).ready(function() {
+        // Set up calendar
+        $('#calendar').fullCalendar({
+            editable: true,
+            events: "/get_events",
+            
+            eventDrop: function(event, delta) {
+                alert(event.title + ' was moved ' + delta + ' days\n' +
+                    '(should probably update your database)');
+            },
+            
+            loading: function(bool) {
+                if (bool) $('#loading').show();
+                else $('#loading').hide();
+            }
+        });
+        // Set up users
+        $.getJSON( "/get_team_members/team1", function( data ) {
+            var items = [];
+            $.each( data, function( key, val ) {
+                items.push( "<div class='team_member' id='" + val['id'] + "'>" + val['name'] + "</div>" );
+            });
 
-	$(document).ready(function() {
-	
-		$('#calendar').fullCalendar({
-		
-			editable: true,
-			
-			events: "/get_events",
-			
-			eventDrop: function(event, delta) {
-				alert(event.title + ' was moved ' + delta + ' days\n' +
-					'(should probably update your database)');
-			},
-			
-			loading: function(bool) {
-				if (bool) $('#loading').show();
-				else $('#loading').hide();
-			}
-			
-		});
-		
-	});
+            $("#team_members").append(items.join(""))
+        });
+    
+        $('#team_members div.team_member').each(function() {
+            console.log($this);
+            // create an Event Object (http://arshaw.com/fullcalendar/docs/event_data/Event_Object/)
+            // it doesn't need to have a start or end
+            var eventObject = {
+                title: $.trim($(this).text()) // use the element's text as the event title
+            };
+            
+            // store the Event Object in the DOM element so we can get to it later
+            $(this).data('eventObject', eventObject);
+            
+            // make the event draggable using jQuery UI
+            $(this).draggable({
+                zIndex: 999,
+                revert: true,      // will cause the event to go back to its
+                revertDuration: 0  //  original position after the drag
+            });
+            
+        });
 
+    });
 </script>
 <style>
 
-	body {
-		margin-top: 40px;
-		text-align: center;
-		font-size: 14px;
-		font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
-		}
-		
-	#loading {
-		position: absolute;
-		top: 5px;
-		right: 5px;
-		}
+    body {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 14px;
+        font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
+        }
+        
+    #wrap {
+        width: 1100px;
+        margin: 0 auto;
+        }
 
-	#calendar {
-		width: 900px;
-		margin: 0 auto;
-		}
+    #team_members {
+        float: left;
+        width: 150px;
+        padding: 0 10px;
+        border: 1px solid #ccc;
+        background: #eee;
+        text-align: left;
+        }
+
+    .team_member { /* try to mimick the look of a real event */
+        margin: 10px 0;
+        padding: 2px 4px;
+        background: #3366CC;
+        color: #fff;
+        font-size: .85em;
+        cursor: pointer;
+        }
+
+    #loading {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        }
+
+    #calendar {
+        float: right;
+        width: 900px;
+        margin: 0 auto;
+        }
 
 </style>
 </head>
 <body>
+<div id='wrap'>
+<div id='team_members'></div>
 <div id='loading' style='display:none'>loading...</div>
 <div id='calendar'></div>
+</div>
 </body>
 </html>

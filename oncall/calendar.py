@@ -15,12 +15,21 @@ def show(page):
 
 @calendar.route('/get_events')
 def get_events():
-	return json.dumps([
-		{'id': '111', 
-		 'title': 'event1', 
-	     'start': "2014-04-10"},
-		{'id': 2,
-		 'title': 'event2',
-		 'start': '2014-04-12',
-		 'end': '2014-04-14'}
-		])
+    return json.dumps([
+        {'id': 1, 
+         'title': 'event1', 
+         'start': "2014-04-10"},
+        {'id': 2,
+         'title': 'event2',
+         'start': '2014-04-12',
+         'end': '2014-04-14'}
+        ])
+
+@calendar.route('/get_team_members/<team>')
+def get_team_members(team):
+    return json.dumps([
+        {'id': 'kincljc',
+         'name': 'Jason Kincl'},
+        {'id': 'smkoch',
+         'name': 'Scott Koch'}
+        ])
