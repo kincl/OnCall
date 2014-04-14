@@ -24,7 +24,7 @@ def show(page):
 @app.route('/get_events')
 def get_events():
     return json.dumps([
-        {'id': 1, 
+        {'id': 1,
          'title': 'event1', 
          'start': "2014-04-10"},
         {'id': 2,
@@ -35,7 +35,4 @@ def get_events():
 
 @app.route('/get_team_members/<team>')
 def get_team_members(team):
-    users = []
-    for u in User.query.all():
-        users.append(u.to_json())
-    return json.dumps(users)
+    return json.dumps([u.to_json() for u in User.query.all()])
