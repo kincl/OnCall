@@ -1,7 +1,7 @@
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-from flask import Blueprint, render_template, abort, current_app
+from flask import render_template, abort
 from jinja2 import TemplateNotFound
 from flask import json
 
@@ -10,8 +10,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 
 db = SQLAlchemy(app)
 
-from oncall.models.user import User
-from oncall.models.team import Team
+from oncall.models import Event
+from oncall.models import User
+#from oncall.models import Team
 
 @app.route('/', defaults={'page': 'index'})
 @app.route('/<page>')
@@ -23,16 +24,13 @@ def show(page):
 
 @app.route('/get_events')
 def get_events():
-    return json.dumps([
-        {'id': 1,
-         'title': 'event1', 
-         'start': "2014-04-10"},
-        {'id': 2,
-         'title': 'event2',
-         'start': '2014-04-12',
-         'end': '2014-04-14'}
-        ])
+    return json.dumps([e.to_json() for e in Event.query.all()])
 
 @app.route('/get_team_members/<team>')
 def get_team_members(team):
     return json.dumps([u.to_json() for u in User.query.all()])
+
+@app.route('/update_event', methods=['POST'])
+def update_event():
+    throw Exception
+    #e = Event(jason.username, team1.slug, "Role 1", "2014-04-12")

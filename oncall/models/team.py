@@ -15,9 +15,8 @@ def slugify(text, delim=u'-'):
 
 class Team(db.Model):
     __tablename__ = 'teams'
-    id = db.Column('id', db.Integer, primary_key=True)
+    slug = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
-    slug = db.Column(db.String(200))
     members = db.relationship('User', 
                               backref='team',
                               lazy='dynamic')
@@ -25,3 +24,6 @@ class Team(db.Model):
     def __init__(self, name):
         self.name = name
         self.slug = slugify(name)
+
+    def __repr__(self):
+        return '<Team %r>' % self.name

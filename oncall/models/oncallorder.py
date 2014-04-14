@@ -1,4 +1,4 @@
-from oncall.database import db
+from oncall import db
 
 class OncallOrder(db.Model):
 	__tablename__ = 'oncall_order'

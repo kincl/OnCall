@@ -4,7 +4,10 @@ class User(db.Model):
     __tablename__ = 'users'
     username = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
-    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'))
+    team_slug = db.Column(db.String(200), db.ForeignKey('teams.slug'))
+    events = db.relationship('Event', 
+                             backref='user',
+                             lazy='dynamic')
 
     def __init__(self, username, name, team = None):
         self.username = username
