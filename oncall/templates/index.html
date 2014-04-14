@@ -2,7 +2,7 @@
 <html>
 <head>
 <link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.css') }}' rel='stylesheet' />
-<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />
+<!--<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />-->
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.min.js') }}'></script>
@@ -16,8 +16,6 @@
             
             eventDrop: function(event, delta) {
                 console.log(event);
-                alert(event.title + ' was moved ' + delta + ' days\n' +
-                    '(should probably update your database)');
             },
 
             drop: function(date, allDay) { // this function is called when something is dropped
@@ -43,7 +41,8 @@
                 else $('#loading').hide();
             }
         });
-        // Set up users
+
+        // Set up team
         $.getJSON( "/get_team_members/team1", function( data ) {
             var items = [];
             $.each( data, function( key, val ) {
