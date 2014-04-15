@@ -7,66 +7,93 @@
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.min.js') }}'></script>
 <script>
-    $(document).ready(function() {
-        // Set up calendar
-        $('#calendar').fullCalendar({
-            editable: true,
-            droppable: true,
-            events: "/get_events",
-            
-            eventDrop: function(event, delta) {
-                console.log(event);
-            },
+function pad(n, width, z) {
+  z = z || '0';
+  n = n + '';
+  return n.length >= width ? n : new Array(width - n.length + 1).join(z) + n;
+}
 
-            drop: function(date, allDay) { // this function is called when something is dropped
-            
-                // retrieve the dropped element's stored Event Object
-                var originalEventObject = $(this).data('eventObject');
-                
-                // we need to copy it, so that multiple events don't have a reference to the same object
-                var copiedEventObject = $.extend({}, originalEventObject);
-                
-                // assign it the date that was reported
-                copiedEventObject.start = date;
-                copiedEventObject.allDay = allDay;
-                
-                // render the event on the calendar
-                // the last `true` argument determines if the event "sticks" (http://arshaw.com/fullcalendar/docs/event_rendering/renderEvent/)
-                $('#calendar').fullCalendar('renderEvent', copiedEventObject, true);
-                
-            },
-            
-            loading: function(bool) {
-                if (bool) $('#loading').show();
-                else $('#loading').hide();
-            }
-        });
+function formatDate(d) {
+    //getMonth starts at 0 for some reason..
+    return d.getFullYear()+'-'+pad(d.getMonth()+1,2)+'-'+pad(d.getDate(),2)
+}
 
-        // Set up team
-        $.getJSON( "/get_team_members/team1", function( data ) {
-            var items = [];
-            $.each( data, function( key, val ) {
-                var member = $("<div/>", {
-                                            "class": "team_member",
-                                            "id": val['id'],
-                                            text: val['name']
-                                          })
-                var eventObject = {
-                    title: $.trim($(member).text()) // use the element's text as the event title
-                };
-                $(member).data('eventObject', eventObject);
+function showMenu(event_id, event_target) {
+    //console.log($(event_target).height());
+    var os = $(event_target).offset()
+    os['top'] = os['top'] + $(event_target).height() + 5;
+    var menu = $("<div/>");
+    menu.css(os);
+    menu.css({'z-index': 100,
+              'position': 'absolute',
+              'width': '100px',
+              'height': '50px',
+              'padding': '10px',
+              'overflow': 'hidden',
+              'background-color': '#ddd'});
+    menu.html("Hello");
+    menu.appendTo('body');
+    menu.click(function () { $(this).remove() })
+}
 
-                $(member).draggable({
-                    zIndex: 999,
-                    revert: true,      // will cause the event to go back to its
-                    revertDuration: 0  //  original position after the drag
-                });
+$(document).ready(function() {
+    // Set up calendar
+    $('#calendar').fullCalendar({
+        editable: true,
+        droppable: true,
+        events: "/get_events",
+        
+        eventDrop: function(event, delta) {
+            console.log(event);
+        },
 
-                items.push(member);
-            });
-            $("#team_members").append(items);
-        });
+        drop: function(date, allDay) { // this function is called when something is dropped
+
+            $.post('{{ url_for('update_event') }}',
+                   {'start': formatDate(date),
+                    'username': $(this).attr('id')});
+
+            $('#calendar').fullCalendar('refetchEvents');
+        },
+        
+        loading: function(bool) {
+            if (bool) $('#loading').show();
+            else $('#loading').hide();
+        },
+
+        eventClick: function(calEvent, jsEvent, view) {
+            // alert('Event: ' + calEvent.title);
+            // alert('Coordinates: ' + jsEvent.pageX + ',' + jsEvent.pageY);
+            // alert('View: ' + view.name);
+
+            // change the border color just for fun
+            //$(this).css('border-color', 'red');
+
+            showMenu(calEvent.id, jsEvent.currentTarget);
+        }
     });
+
+    // Set up team
+    $.getJSON( "/get_team_members/team1", function( data ) {
+        var items = [];
+        $.each( data, function( key, val ) {
+            var member = $("<div/>", {
+                           "class": "team_member",
+                           "id": val['id'],
+                           text: val['name']
+                          })
+
+            $(member).draggable({
+                zIndex: 999,
+                revert: true,      // will cause the event to go back to its
+                revertDuration: 0  //  original position after the drag
+            });
+
+            items.push(member);
+        });
+        $("#team_members").append(items);
+    });
+});
 </script>
 <style>
 

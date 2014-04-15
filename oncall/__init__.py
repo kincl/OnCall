@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask import render_template, abort
@@ -32,5 +32,9 @@ def get_team_members(team):
 
 @app.route('/update_event', methods=['POST'])
 def update_event():
-    throw Exception
     #e = Event(jason.username, team1.slug, "Role 1", "2014-04-12")
+    if Event.query.filter_by(start=request.form['start']).all() == []:
+        newe = Event(request.form['username'], 'team-1', 'Role TEST', request.form['start'])
+        db.session.add(newe)
+        db.session.commit()
+    return json.dumps({'result': 'success'})
