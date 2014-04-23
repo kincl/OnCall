@@ -9,8 +9,8 @@ class Event(db.Model):
     start = db.Column(db.String(100))
     end = db.Column(db.String(100))
 
-    def __init__(self, username, team_slug, role, start, end = None):
-		self.user_username = username
+    def __init__(self, user_username, team_slug, role, start, end = None):
+		self.user_username = user_username
 		self.team_slug = team_slug
 		self.role = role
 		self.start = start

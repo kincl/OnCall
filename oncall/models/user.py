@@ -9,10 +9,10 @@ class User(db.Model):
                              backref='user',
                              lazy='dynamic')
 
-    def __init__(self, username, name, team = None):
+    def __init__(self, username, name, team_slug = None):
         self.username = username
         self.name = name
-        self.team = team
+        self.team_slug = team_slug
 
     def to_json(self):
         return dict(name=self.name, id=self.username, team=self.team.name)

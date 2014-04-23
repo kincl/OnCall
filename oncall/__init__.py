@@ -12,7 +12,7 @@ db = SQLAlchemy(app)
 
 from oncall.models import Event
 from oncall.models import User
-#from oncall.models import Team
+from oncall.models import Team
 
 @app.route('/', defaults={'page': 'index'})
 @app.route('/<page>')
