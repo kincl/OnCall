@@ -15,7 +15,12 @@ function pad(n, width, z) {
 
 function formatDate(d) {
     //getMonth starts at 0 for some reason..
-    return d.getFullYear()+'-'+pad(d.getMonth()+1,2)+'-'+pad(d.getDate(),2)
+    if (d == null) { 
+        return null 
+    } 
+    else {
+        return d.getFullYear()+'-'+pad(d.getMonth()+1,2)+'-'+pad(d.getDate(),2);
+    }
 }
 
 function showMenu(event_id, event_target) {
@@ -30,6 +35,15 @@ function showMenu(event_id, event_target) {
     menu.click(function () { $(this).remove() })
 }
 
+function updateAndRefetch(event, delta) {
+    $.post('{{ url_for("update_event", eventid="") }}' + event.id,
+           {'start': formatDate(event.start),
+            'end': formatDate(event.end),
+            'username': $(this).attr('id')});
+
+    $('#calendar').fullCalendar('refetchEvents');
+}
+
 $(document).ready(function() {
     // Set up calendar
     $('#calendar').fullCalendar({
@@ -37,22 +51,13 @@ $(document).ready(function() {
         droppable: true,
         events: "/get_events",
         
-        eventDrop: function(event, delta) {
-            //console.log(event);
-        },
+        eventDrop: updateAndRefetch,
 
-        eventResize: function(event, delta) {
-            $.post('{{ url_for('update_event') }}',
-                   {'start': formatDate(event.start),
-                    'end': formatDate(event.end),
-                    'username': $(this).attr('id')});
-
-            $('#calendar').fullCalendar('refetchEvents');
-        },
+        eventResize: updateAndRefetch,
 
         drop: function(date, allDay) { // this function is called when something is dropped
 
-            $.post('{{ url_for('update_event') }}',
+            $.post('{{ url_for('create_event') }}',
                    {'start': formatDate(date),
                     'username': $(this).attr('id')});
 
@@ -73,13 +78,6 @@ $(document).ready(function() {
         },
 
         eventClick: function(calEvent, jsEvent, view) {
-            // alert('Event: ' + calEvent.title);
-            // alert('Coordinates: ' + jsEvent.pageX + ',' + jsEvent.pageY);
-            // alert('View: ' + view.name);
-
-            // change the border color just for fun
-            //$(this).css('border-color', 'red');
-
             showMenu(calEvent.id, jsEvent.currentTarget);
         }
     });
