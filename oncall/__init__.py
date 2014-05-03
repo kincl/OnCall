@@ -19,9 +19,7 @@ def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
 
-def _can_add_event(start_date, end_date, exclude_event = None):
-    """ Given a start and end date, make sure that there are not more
-        than two events. """
+def _get_events_for_dates(start_date, end_date, exclude_event = None):
     start  = _str_to_date(start_date)
     end = _str_to_date(end_date if end_date else start_date)
     events_start = Event.query.filter(start >= Event.start,
@@ -34,12 +32,19 @@ def _can_add_event(start_date, end_date, exclude_event = None):
                                        end >= Event.end,
                                        Event.id != exclude_event)
 
-    events_all = events_start.union(events_end, events_inside).all()
+    return events_start.union(events_end, events_inside).all()
+
+
+def _can_add_event(start_date, end_date, exclude_event = None):
+    """ Given a start and end date, make sure that there are not more
+        than two events. """
+
+    events_all = _get_events_for_dates(start_date, end_date, exclude_event)
 
     one_day = timedelta(1)
 
-    i = start
-    while i != end + one_day:
+    i = _str_to_date(start_date)
+    while i != _str_to_date(end_date if end_date else start_date) + one_day:
         count = 0
         for e in events_all:
             if i >= e.start and i <= e.end:
@@ -68,7 +73,7 @@ def get_team_members(team):
 @app.route('/create_event', methods=['POST'])
 def create_event():
     if _can_add_event(request.form.get('start'), request.form.get('end')):
-        events = Event.query.filter_by(start=_str_to_date(request.form.get('start'))).all()
+        events = _get_events_for_dates(request.form.get('start'), request.form.get('end'))
         newe = Event(request.form.get('username'), 
                      'team-1', 
                      ROLES[0] if events == [] else ROLES[1], 
