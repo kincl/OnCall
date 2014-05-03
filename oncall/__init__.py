@@ -5,7 +5,7 @@ from flask import render_template, abort
 from jinja2 import TemplateNotFound
 from flask import json
 
-from datetime import date
+from datetime import date, timedelta
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -44,7 +44,6 @@ def _can_add_event(start_date, end_date, exclude_event = None):
         than two events. """
     start  = _str_to_date(start_date)
     end = _str_to_date(end_date if end_date else start_date)
-    print start,end
     events_start = Event.query.filter(start >= Event.start,
                                       start <= Event.end,
                                       Event.id != exclude_event)
@@ -55,35 +54,60 @@ def _can_add_event(start_date, end_date, exclude_event = None):
                                        end >= Event.end,
                                        Event.id != exclude_event)
 
-    events_all = events_start.union(events_end, events_inside)
-    print events_all.all()
+    events_all = events_start.union(events_end, events_inside).all()
+
+    one_day = timedelta(1)
+
+    i = start
+    while i != end + one_day:
+        count = 0
+        for e in events_all:
+            if i >= e.start and i <= e.end:
+                count += 1
+        if count >= 2:
+            return False
+        i += one_day
+    return True
 
 
 @app.route('/create_event', methods=['POST'])
 def create_event():
-    _can_add_event(request.form.get('start'), request.form.get('end'))
-    events = Event.query.filter_by(start=_str_to_date(request.form.get('start')))
-    newe = Event(request.form.get('username'), 
-                 'team-1', 
-                 ROLES[0] if events.all() == [] else ROLES[1], 
-                 _str_to_date(request.form.get('start')))
+    if _can_add_event(request.form.get('start'), request.form.get('end')):
+        events = Event.query.filter_by(start=_str_to_date(request.form.get('start')))
+        newe = Event(request.form.get('username'), 
+                     'team-1', 
+                     ROLES[0] if events.all() == [] else ROLES[1], 
+                     _str_to_date(request.form.get('start')))
 
-    db.session.add(newe)
-    db.session.commit()
-    return json.dumps({'result': 'success'})
+        db.session.add(newe)
+        db.session.commit()
+        return json.dumps({'result': 'success'})
+    else:
+        return json.dumps({'result': 'failure'})
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
-    _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid)
-    #e = Event(jason.username, team1.slug, "Role 1", "2014-04-12")
-    e = Event.query.filter_by(id=eventid).first()
-    if e == []:
-        newe = Event(request.form['username'], 'team-1', ROLES[0], date(request.form['start']))
-        db.session.add(newe)
-        db.session.commit()
+    if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
+        #e = Event(jason.username, team1.slug, "Role 1", "2014-04-12")
+        e = Event.query.filter_by(id=eventid).first()
+        if e == []:
+            print 'new e'
+            newe = Event(request.form['username'], 'team-1', ROLES[0], date(request.form['start']))
+            db.session.add(newe)
+            db.session.commit()
+        else:
+            e.start = _str_to_date(request.form.get('start'))
+            e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+            db.session.commit()
+        return json.dumps({'result': 'success'})
     else:
-        e.start = _str_to_date(request.form.get('start'))
-        e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
-        db.session.commit()
+        return json.dumps({'result': 'failure'})
+
+@app.route('/delete_event/<eventid>', methods=['POST'])
+def delete_event(eventid):
+    e = Event.query.filter_by(id=eventid).first()
+    db.session.delete(e)
+    db.session.commit()
     return json.dumps({'result': 'success'})
+
 

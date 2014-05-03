@@ -23,6 +23,12 @@ function formatDate(d) {
     }
 }
 
+function delete_event(event_id) {
+    $.post('{{ url_for("delete_event", eventid="") }}' + event_id);
+
+    $('#calendar').fullCalendar('refetchEvents');
+}
+
 function showMenu(event_id, event_target) {
     $('#menu').remove();
     //console.log($(event_target).height());
@@ -30,7 +36,7 @@ function showMenu(event_id, event_target) {
     os['top'] = os['top'] + $(event_target).height() + 5;
     var menu = $("<div id='menu'/>");
     menu.css(os);
-    menu.html("Hello");
+    menu.html("Hello<br><a href=# onclick='delete_event("+event_id+")' >Delete me</a>");
     menu.appendTo('body');
     menu.click(function () { $(this).remove() })
 }
@@ -79,6 +85,7 @@ $(document).ready(function() {
 
         eventClick: function(calEvent, jsEvent, view) {
             showMenu(calEvent.id, jsEvent.currentTarget);
+            // $(calEvent).background();
         }
     });
 
