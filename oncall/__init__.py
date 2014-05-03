@@ -1,10 +1,6 @@
-from flask import Flask, request
+from flask import Flask, request, render_template, abort, json, Response
 from flask.ext.sqlalchemy import SQLAlchemy
-
-from flask import render_template, abort
 from jinja2 import TemplateNotFound
-from flask import json
-
 from datetime import date, timedelta
 
 app = Flask(__name__)
@@ -81,9 +77,9 @@ def create_event():
 
         db.session.add(newe)
         db.session.commit()
-        return json.dumps({'result': 'success'})
+        return Response(json.dumps({'result': 'success'}), mimetype='application/json')
     else:
-        return json.dumps({'result': 'failure'})
+        return Response(json.dumps({'result': 'failure'}), mimetype='application/json')
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
@@ -99,15 +95,15 @@ def update_event(eventid):
             e.start = _str_to_date(request.form.get('start'))
             e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
             db.session.commit()
-        return json.dumps({'result': 'success'})
+        return Response(json.dumps({'result': 'success'}), mimetype='application/json')
     else:
-        return json.dumps({'result': 'failure'})
+        return Response(json.dumps({'result': 'failure'}), mimetype='application/json')
 
 @app.route('/delete_event/<eventid>', methods=['POST'])
 def delete_event(eventid):
     e = Event.query.filter_by(id=eventid).first()
     db.session.delete(e)
     db.session.commit()
-    return json.dumps({'result': 'success'})
+    return Response(json.dumps({'result': 'success'}), mimetype='application/json')
 
 
