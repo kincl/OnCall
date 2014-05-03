@@ -2,10 +2,12 @@
 <html>
 <head>
 <link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.css') }}' rel='stylesheet' />
+<link href='{{ url_for('static', filename='qtip2/jquery.qtip.min.css') }}' rel='stylesheet' />
 <!--<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />-->
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.min.js') }}'></script>
+<script src='{{ url_for('static', filename='qtip2/jquery.qtip.min.js') }}'></script>
 <script>
 function pad(n, width, z) {
   z = z || '0';
@@ -84,15 +86,35 @@ $(document).ready(function() {
             $('#menu').remove()
         },
 
-        eventClick: function(calEvent, jsEvent, view) {
-            showMenu(calEvent.id, jsEvent.currentTarget);
-            // $(calEvent).background();
-        },
+        // eventClick: function(calEvent, jsEvent, view) {
+        //     showMenu(calEvent.id, jsEvent.currentTarget);
+        //     // $(calEvent).background();
+        // },
 
         dayRender: function (date, cell) {
             if (date.getDay() == 6 || date.getDay() == 0) {
                 $(cell).css('background-color', '#f8f8f8')
             }
+        },
+
+        eventRender: function (event, element, view) {
+            $(element).qtip({ // Grab some elements to apply the tooltip to
+                content: {
+                        text: "<button onclick='delete_event("+event.id+")' >Delete me</button>"
+                    },
+                show: {
+                    solo: true,
+                    event: 'click'
+                },
+                hide: {
+                    event: 'click'
+                },
+                position: {
+                    my: 'top left',
+                    at: 'bottom center',
+
+                }
+            })
         }
     });
 
