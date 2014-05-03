@@ -23,4 +23,4 @@ class Event(db.Model):
         return r
 
     def __repr__(self):
-        return '<Event %s:%s from %s to %s>' % (self.team_slug, self.user_username, self.start, self.end)
+        return '<Event %s %s:%s from %s to %s>' % (self.id, self.team_slug, self.user_username, self.start, self.end)

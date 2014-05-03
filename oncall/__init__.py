@@ -39,14 +39,25 @@ def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
 
-def _can_add_event(start_date, end_date):
+def _can_add_event(start_date, end_date, exclude_event = None):
     """ Given a start and end date, make sure that there are not more
         than two events. """
     start  = _str_to_date(start_date)
     end = _str_to_date(end_date if end_date else start_date)
-    events = Event.query.filter(Event.start >= start,
-                                Event.end <= end)
-    print events.all()
+    print start,end
+    events_start = Event.query.filter(start >= Event.start,
+                                      start <= Event.end,
+                                      Event.id != exclude_event)
+    events_end = Event.query.filter(end >= Event.start,
+                                    end <= Event.end,
+                                    Event.id != exclude_event)
+    events_inside = Event.query.filter(start <= Event.start,
+                                       end >= Event.end,
+                                       Event.id != exclude_event)
+
+    events_all = events_start.union(events_end, events_inside)
+    print events_all.all()
+
 
 @app.route('/create_event', methods=['POST'])
 def create_event():
@@ -63,7 +74,7 @@ def create_event():
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
-    _can_add_event(request.form.get('start'), request.form.get('end'))
+    _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid)
     #e = Event(jason.username, team1.slug, "Role 1", "2014-04-12")
     e = Event.query.filter_by(id=eventid).first()
     if e == []:
