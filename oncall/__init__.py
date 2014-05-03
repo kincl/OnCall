@@ -15,22 +15,6 @@ from oncall.models import Team
 ROLES = ['Primary',
          'Secondary']
 
-@app.route('/', defaults={'page': 'index'})
-@app.route('/<page>')
-def show(page):
-    try:
-        return render_template('%s.html' % page)
-    except TemplateNotFound:
-        abort(404)
-
-@app.route('/get_events')
-def get_events():
-    return json.dumps([e.to_json() for e in Event.query.all()])
-
-@app.route('/get_team_members/<team>')
-def get_team_members(team):
-    return json.dumps([u.to_json() for u in User.query.all()])
-
 def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
@@ -65,6 +49,21 @@ def _can_add_event(start_date, end_date, exclude_event = None):
         i += one_day
     return True
 
+@app.route('/', defaults={'page': 'index'})
+@app.route('/<page>')
+def show(page):
+    try:
+        return render_template('%s.html' % page)
+    except TemplateNotFound:
+        abort(404)
+
+@app.route('/get_events')
+def get_events():
+    return Response(json.dumps([e.to_json() for e in Event.query.all()]), mimetype='application/json')
+
+@app.route('/get_team_members/<team>')
+def get_team_members(team):
+    return Response(json.dumps([u.to_json() for u in User.query.all()]), mimetype='application/json')
 
 @app.route('/create_event', methods=['POST'])
 def create_event():
@@ -86,15 +85,9 @@ def update_event(eventid):
     if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
         #e = Event(jason.username, team1.slug, "Role 1", "2014-04-12")
         e = Event.query.filter_by(id=eventid).first()
-        if e == []:
-            print 'new e'
-            newe = Event(request.form['username'], 'team-1', ROLES[0], date(request.form['start']))
-            db.session.add(newe)
-            db.session.commit()
-        else:
-            e.start = _str_to_date(request.form.get('start'))
-            e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
-            db.session.commit()
+        e.start = _str_to_date(request.form.get('start'))
+        e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+        db.session.commit()
         return Response(json.dumps({'result': 'success'}), mimetype='application/json')
     else:
         return Response(json.dumps({'result': 'failure'}), mimetype='application/json')
