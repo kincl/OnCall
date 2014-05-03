@@ -73,10 +73,10 @@ def _can_add_event(start_date, end_date, exclude_event = None):
 @app.route('/create_event', methods=['POST'])
 def create_event():
     if _can_add_event(request.form.get('start'), request.form.get('end')):
-        events = Event.query.filter_by(start=_str_to_date(request.form.get('start')))
+        events = Event.query.filter_by(start=_str_to_date(request.form.get('start'))).all()
         newe = Event(request.form.get('username'), 
                      'team-1', 
-                     ROLES[0] if events.all() == [] else ROLES[1], 
+                     ROLES[0] if events == [] else ROLES[1], 
                      _str_to_date(request.form.get('start')))
 
         db.session.add(newe)
