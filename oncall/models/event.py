@@ -17,7 +17,10 @@ class Event(db.Model):
 		self.end = start if end is None else end
 
     def to_json(self):
-    	r = dict(id=self.id, start=self.start.isoformat(), title="%s: %s" % (self.role, self.user.name))
+    	r = dict(id=self.id,
+                 start=self.start.isoformat(),
+                 title="%s: %s" % (self.role, self.user.name),
+                 user_username=self.user_username)
     	if self.end is not None:
     		r['end'] = self.end.isoformat()
         return r

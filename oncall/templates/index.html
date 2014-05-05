@@ -42,6 +42,12 @@ function updateAndRefetch(event, delta) {
     $('#calendar').fullCalendar('refetchEvents');
 }
 
+function get_color(offset) {
+    if (!offset) { offset = 0; }
+    var num=offset*900;
+    return num.toString(16);
+}
+
 $(document).ready(function() {
     var menu = $('<div/>').qtip({
         //id: 'calendar',
@@ -67,6 +73,32 @@ $(document).ready(function() {
         style: 'qtip-light'
     }).qtip('api');
     global.menu = menu;
+
+    // Set up team
+    $.getJSON( "/get_team_members/team1", function( data ) {
+        var items = [];
+        var team_colors = {};
+        $.each( data, function( key, val ) {
+            var background = get_color(Object.keys(team_colors).length);
+            var member = $("<div/>", {
+                           "class": "team_member",
+                           "id": val['id'],
+                           text: val['name']
+                          })
+            $(member).draggable({
+                zIndex: 999,
+                revert: true,      // will cause the event to go back to its
+                revertDuration: 0  //  original position after the drag
+            });
+            items.push(member);
+
+            $(member).css('background-color', '#'+background);
+            team_colors[val['id']] = background;
+        });
+        global.team_colors = team_colors;
+        console.log(team_colors);
+        $("#team_members").append(items);
+    });
 
     // Set up calendar
     $('#calendar').fullCalendar({
@@ -110,27 +142,11 @@ $(document).ready(function() {
                 $(cell).css('background-color', '#f8f8f8')
             }
         },
-    });
 
-    // Set up team
-    $.getJSON( "/get_team_members/team1", function( data ) {
-        var items = [];
-        $.each( data, function( key, val ) {
-            var member = $("<div/>", {
-                           "class": "team_member",
-                           "id": val['id'],
-                           text: val['name']
-                          })
-
-            $(member).draggable({
-                zIndex: 999,
-                revert: true,      // will cause the event to go back to its
-                revertDuration: 0  //  original position after the drag
-            });
-
-            items.push(member);
-        });
-        $("#team_members").append(items);
+        eventRender: function (event, element, view) {
+            $(element).css('background-color', '#'+global.team_colors[event.user_username]);
+            $(element).css('border', '1px solid #'+global.team_colors[event.user_username]);
+        }
     });
 });
 </script>
