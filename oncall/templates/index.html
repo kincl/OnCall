@@ -9,6 +9,8 @@
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.min.js') }}'></script>
 <script src='{{ url_for('static', filename='qtip2/jquery.qtip.min.js') }}'></script>
 <script>
+var global = {};
+
 function pad(n, width, z) {
   z = z || '0';
   n = n + '';
@@ -27,20 +29,8 @@ function formatDate(d) {
 
 function delete_event(event_id) {
     $.post('{{ url_for("delete_event", eventid="") }}' + event_id);
-
     $('#calendar').fullCalendar('refetchEvents');
-}
-
-function showMenu(event_id, event_target) {
-    $('#menu').remove();
-    //console.log($(event_target).height());
-    var os = $(event_target).offset()
-    os['top'] = os['top'] + $(event_target).height() + 5;
-    var menu = $("<div id='menu'/>");
-    menu.css(os);
-    menu.html("<button onclick='delete_event("+event_id+")' >Delete me</button>");
-    menu.appendTo('body');
-    menu.click(function () { $(this).remove() })
+    global.menu.hide()
 }
 
 function updateAndRefetch(event, delta) {
@@ -53,6 +43,31 @@ function updateAndRefetch(event, delta) {
 }
 
 $(document).ready(function() {
+    var menu = $('<div/>').qtip({
+        //id: 'calendar',
+        prerender: true,
+        content: {
+            text: ' ',
+            title: {
+                button: true
+            }
+        },
+        position: {
+            my: 'bottom center',
+            at: 'top center',
+            target: 'mouse',
+            viewport: $('#calendar'),
+            adjust: {
+                mouse: false,
+                scroll: false
+            }
+        },
+        show: false,
+        hide: false,
+        style: 'qtip-light'
+    }).qtip('api');
+    global.menu = menu;
+
     // Set up calendar
     $('#calendar').fullCalendar({
         firstDay: 1,
@@ -65,7 +80,6 @@ $(document).ready(function() {
         eventResize: updateAndRefetch,
 
         drop: function(date, allDay) { // this function is called when something is dropped
-
             $.post('{{ url_for('create_event') }}',
                    {'start': formatDate(date),
                     'username': $(this).attr('id')});
@@ -78,50 +92,24 @@ $(document).ready(function() {
             else $('#loading').hide();
         },
 
-        eventDragStart: function(calEvent, jsEvent, ui, view) {
-            $('#menu').remove()
-        },
+        eventDragStart: function() { global.menu.hide() },
+        eventResizeStart: function() { global.menu.hide() },
+        dayClick: function() { global.menu.hide() },
+        viewDisplay: function() { global.menu.hide() },
 
-        eventResizeStart: function(calEvent, jsEvent, ui, view) {
-            $('#menu').remove()
+        eventClick: function(data, event, view) {
+            var content = '<button onclick="delete_event('+data.id+')" >Delete me</button>'
+            menu.set({
+                'content.text': content
+            })
+            .reposition(event).show(event);
         },
-
-        // eventClick: function(calEvent, jsEvent, view) {
-        //     showMenu(calEvent.id, jsEvent.currentTarget);
-        //     // $(calEvent).background();
-        // },
 
         dayRender: function (date, cell) {
             if (date.getDay() == 6 || date.getDay() == 0) {
                 $(cell).css('background-color', '#f8f8f8')
             }
         },
-
-        eventRender: function (event, element, view) {
-            $(element).qtip({ // Grab some elements to apply the tooltip to
-                content: {
-                        text: "<button onclick='delete_event("+event.id+")' >Delete me</button>"
-                    },
-                show: {
-                    solo: true,
-                    event: 'click'
-                },
-                hide: {
-                    event: 'click'
-                },
-                position: {
-                    my: 'top left',
-                    at: 'bottom center',
-                    target: 'mouse'
-                },
-                adjust: {
-                    mouse: false
-                },
-                style: {
-                    classes: 'qtip-light qtip-shadow qtip-rounded'
-                }
-            })
-        }
     });
 
     // Set up team
