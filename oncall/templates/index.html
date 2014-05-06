@@ -44,8 +44,9 @@ function updateAndRefetch(event, delta) {
 
 function get_color(offset) {
     if (!offset) { offset = 0; }
-    var num=offset*900;
-    return num.toString(16);
+    var num=offset*102;
+    num = num + parseInt(num/360)*79
+    return 'hsl('+num+', 60%, 50%)';
 }
 
 $(document).ready(function() {
@@ -92,11 +93,10 @@ $(document).ready(function() {
             });
             items.push(member);
 
-            $(member).css('background-color', '#'+background);
+            $(member).css('background-color', background);
             team_colors[val['id']] = background;
         });
         global.team_colors = team_colors;
-        console.log(team_colors);
         $("#team_members").append(items);
     });
 
@@ -144,8 +144,8 @@ $(document).ready(function() {
         },
 
         eventRender: function (event, element, view) {
-            $(element).css('background-color', '#'+global.team_colors[event.user_username]);
-            $(element).css('border', '1px solid #'+global.team_colors[event.user_username]);
+            $(element).css('background-color', global.team_colors[event.user_username]);
+            $(element).css('border', '1px solid '+global.team_colors[event.user_username]);
         }
     });
 });
