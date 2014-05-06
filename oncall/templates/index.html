@@ -6,7 +6,7 @@
 <!--<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />-->
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>
-<script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.min.js') }}'></script>
+<script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.js') }}'></script>
 <script src='{{ url_for('static', filename='qtip2/jquery.qtip.min.js') }}'></script>
 <script>
 var global = {};
@@ -27,7 +27,14 @@ function formatDate(d) {
     }
 }
 
-function delete_event(event_id) {
+function modify_event_by_id(event_id) {
+    $.post('{{ url_for("update_event", eventid="") }}' + event_id,
+           {'user_username': $('div#menu_content #user option:selected').attr('id'),
+            'role': $('div#menu_content #role option:selected').val()});
+    $('#calendar').fullCalendar('refetchEvents');
+}
+
+function delete_event_by_id(event_id) {
     $.post('{{ url_for("delete_event", eventid="") }}' + event_id);
     $('#calendar').fullCalendar('refetchEvents');
     global.menu.hide()
@@ -38,8 +45,6 @@ function updateAndRefetch(event, delta) {
            {'start': formatDate(event.start),
             'end': formatDate(event.end),
             'username': $(this).attr('id')});
-    console.log($(this));
-
     $('#calendar').fullCalendar('refetchEvents');
 }
 
@@ -89,7 +94,7 @@ $(document).ready(function() {
             my: 'bottom center',
             at: 'top center',
             target: 'mouse',
-            viewport: $('#calendar'),
+            //viewport: $('#calendar'),
             adjust: {
                 mouse: false,
                 scroll: false
@@ -164,22 +169,27 @@ $(document).ready(function() {
         viewDisplay: function() { global.menu.hide() },
 
         eventClick: function(data, event, view) {
-            var content = $('<div/>');
-            content.append($('<form/>').
-                           attr('method', 'POST').
-                           attr('action', '{{ url_for("update_event", eventid="") }}'+data.id).
-                           append($('<br/>')).
+            var content = $('<div/>').
+                          attr('id', 'menu_content');
+            content.append($('<input/>').
+                           attr('type', 'hidden').
+                           attr('value', data.id));
+            content.append($('<br/>')).
                            append($('<span/>').html('Role:')).
                            append($('<select/>').
-                           append(make_select_options(global.roles, data.role))).
+                                  attr('id', 'role').
+                                  append(make_select_options(global.roles, data.role))).
                            append($('<br/>')).
                            append($('<span/>').html('Person:')).
                            append($('<select/>').
-                           append(make_select_options(global.team, data.user_username))).
-                           append($('<br/>')).
-                           append($('<input/>').attr('type','submit').attr('value', 'Change')));
+                                  attr('id', 'user').
+                                  append(make_select_options(global.team, data.user_username))).
+                           append($('<br/>'));
             content.append($('<button/>').
-                           attr('onclick', 'delete_event('+data.id+')').
+                           attr('onclick', 'modify_event_by_id('+data.id+')').
+                           html('Modify'));
+            content.append($('<button/>').
+                           attr('onclick', 'delete_event_by_id('+data.id+')').
                            html('Delete'));
             menu.set({
                 'content.text': content

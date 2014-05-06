@@ -96,12 +96,17 @@ def create_event():
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
-    if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
-        # TODO fix error handling
-        e = Event.query.filter_by(id=eventid).first()
-        e.start = _str_to_date(request.form.get('start'))
-        e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
-        db.session.commit()
+    e = Event.query.filter_by(id=eventid).first()
+    if request.form.get('start'):
+        if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
+            # TODO fix error handling
+            e.start = _str_to_date(request.form.get('start'))
+            e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+    elif request.form.get('role'):
+        e.role = request.form.get('role')
+        e.user_username = request.form.get('user_username')
+        
+    if db.session.commit():
         return Response(json.dumps({'result': 'success'}),
                         mimetype='application/json')
     else:
