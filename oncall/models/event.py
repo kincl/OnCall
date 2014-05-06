@@ -20,7 +20,8 @@ class Event(db.Model):
     	r = dict(id=self.id,
                  start=self.start.isoformat(),
                  title="%s: %s" % (self.role, self.user.name),
-                 user_username=self.user_username)
+                 user_username=self.user_username,
+                 role=self.role)
     	if self.end is not None:
     		r['end'] = self.end.isoformat()
         return r

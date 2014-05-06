@@ -1,0 +1,36 @@
+DESIGN
+
+window.load()
+- get team
+- fetch team members based on team
+- fetch events
+
+On drop/update/delete event
+- set new newevent
+- remove autogen flags
+- reload events on calendar
+
+Things:
+Interface to quickly change an event for today, rest of week, rest of oncall
+- Button next to team member name?
+- click event brings up menu to change team member
+
+Undo button
+- in a flash bar like gmail?
+
+Set oncall for less than a whole day
+- to allow fro daytime and night oncall splits
+
+Dont allow modifications of past events
+
+Cron to update and auto add oncall events for N weeks into future
+- Need to set default rotation schedule -> set default schedule per role
+
+Fetch team from ldap groups
+
+Mass delete of future oncall events
+- set flag for autogen that makes for easier searching of cron'd event adds
+- can allow for delete/readd when default order is updated
+
+export for iCal format?
+- or use Google cal APIs?

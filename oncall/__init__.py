@@ -10,7 +10,7 @@ db = SQLAlchemy(app)
 
 from oncall.models import Event
 from oncall.models import User
-from oncall.models import Team
+#from oncall.models import Team
 
 ROLES = ['Primary',
          'Secondary']
@@ -64,11 +64,18 @@ def show(page):
 
 @app.route('/get_events')
 def get_events():
-    return Response(json.dumps([e.to_json() for e in Event.query.all()]), mimetype='application/json')
+    return Response(json.dumps([e.to_json() for e in Event.query.all()]),
+           mimetype='application/json')
 
 @app.route('/get_team_members/<team>')
 def get_team_members(team):
-    return Response(json.dumps([u.to_json() for u in User.query.all()]), mimetype='application/json')
+    return Response(json.dumps([u.to_json() for u in User.query.filter_by(team_slug=team).all()]),
+                    mimetype='application/json')
+
+@app.route('/get_roles')
+def get_roles():
+    return Response(json.dumps(ROLES),
+                    mimetype='application/json')
 
 @app.route('/create_event', methods=['POST'])
 def create_event():

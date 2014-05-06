@@ -42,6 +42,27 @@ function updateAndRefetch(event, delta) {
     $('#calendar').fullCalendar('refetchEvents');
 }
 
+function make_select(options, selected) {
+    var html_opts = [];
+    $(options).each(function (key, value) {
+        var opt = $('<option/>');
+        if (typeof(value) == "string") {
+            opt.html(value);
+            opt.attr('id', value);
+            if (value == selected)
+                opt.attr('selected', 'selected');
+        }
+        else {
+            opt.html(value[1]);
+            opt.attr('id', value[0]);
+            if (value[0] == selected)
+                opt.attr('selected', 'selected');
+        }
+        html_opts.push(opt);
+    });
+    return html_opts
+}
+
 function get_color(offset) {
     if (!offset) { offset = 0; }
     var num=offset*102;
@@ -76,9 +97,10 @@ $(document).ready(function() {
     global.menu = menu;
 
     // Set up team
-    $.getJSON( "/get_team_members/team1", function( data ) {
+    $.getJSON( "/get_team_members/team-1", function( data ) {
         var items = [];
         var team_colors = {};
+        var team = [];
         $.each( data, function( key, val ) {
             var background = get_color(Object.keys(team_colors).length);
             var member = $("<div/>", {
@@ -95,9 +117,16 @@ $(document).ready(function() {
 
             $(member).css('background-color', background);
             team_colors[val['id']] = background;
+            team.push([val['id'],val['name']])
         });
         global.team_colors = team_colors;
         $("#team_members").append(items);
+        global.team = team;
+    });
+
+    // get roles
+    $.getJSON( "/get_roles", function( data ) {
+        global.roles = data
     });
 
     // Set up calendar
@@ -130,7 +159,19 @@ $(document).ready(function() {
         viewDisplay: function() { global.menu.hide() },
 
         eventClick: function(data, event, view) {
-            var content = '<button onclick="delete_event('+data.id+')" >Delete me</button>'
+            var content = $('<div/>');
+            content.append($('<button/>').
+                           attr('onclick', 'delete_event('+data.id+')').
+                           html('Delete'));
+            content.append($('<br/>'));
+            content.append($('<span/>').html('Role:'))
+            content.append($('<select/>').
+                           append(make_select(global.roles, data.role)))
+            content.append($('<br/>'));
+            content.append($('<span/>').html('User:'))
+            content.append($('<select/>').
+                           append(make_select(global.team, data.user_username)))
+
             menu.set({
                 'content.text': content
             })
