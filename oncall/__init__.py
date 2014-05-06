@@ -88,9 +88,11 @@ def create_event():
 
         db.session.add(newe)
         db.session.commit()
-        return Response(json.dumps({'result': 'success'}), mimetype='application/json')
+        return Response(json.dumps({'result': 'success'}),
+                        mimetype='application/json')
     else:
-        return Response(json.dumps({'result': 'failure'}), mimetype='application/json')
+        return Response(json.dumps({'result': 'failure'}),
+                        mimetype='application/json')
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
@@ -100,15 +102,18 @@ def update_event(eventid):
         e.start = _str_to_date(request.form.get('start'))
         e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
         db.session.commit()
-        return Response(json.dumps({'result': 'success'}), mimetype='application/json')
+        return Response(json.dumps({'result': 'success'}),
+                        mimetype='application/json')
     else:
-        return Response(json.dumps({'result': 'failure'}), mimetype='application/json')
+        return Response(json.dumps({'result': 'failure'}),
+                        mimetype='application/json')
 
 @app.route('/delete_event/<eventid>', methods=['POST'])
 def delete_event(eventid):
     e = Event.query.filter_by(id=eventid).first()
     db.session.delete(e)
     db.session.commit()
-    return Response(json.dumps({'result': 'success'}), mimetype='application/json')
+    return Response(json.dumps({'result': 'success'}),
+                    mimetype='application/json')
 
 

@@ -38,11 +38,15 @@ function updateAndRefetch(event, delta) {
            {'start': formatDate(event.start),
             'end': formatDate(event.end),
             'username': $(this).attr('id')});
+    console.log($(this));
 
     $('#calendar').fullCalendar('refetchEvents');
 }
 
-function make_select(options, selected) {
+/* Can handle either a array of values or
+   an array of arrays of key, val pairs
+*/
+function make_select_options(options, selected) {
     var html_opts = [];
     $(options).each(function (key, value) {
         var opt = $('<option/>');
@@ -53,6 +57,7 @@ function make_select(options, selected) {
                 opt.attr('selected', 'selected');
         }
         else {
+            // we must have a [key, val] array
             opt.html(value[1]);
             opt.attr('id', value[0]);
             if (value[0] == selected)
@@ -124,7 +129,7 @@ $(document).ready(function() {
         global.team = team;
     });
 
-    // get roles
+    // get roles and add to global variable
     $.getJSON( "/get_roles", function( data ) {
         global.roles = data
     });
@@ -160,18 +165,22 @@ $(document).ready(function() {
 
         eventClick: function(data, event, view) {
             var content = $('<div/>');
+            content.append($('<form/>').
+                           attr('method', 'POST').
+                           attr('action', '{{ url_for("update_event", eventid="") }}'+data.id).
+                           append($('<br/>')).
+                           append($('<span/>').html('Role:')).
+                           append($('<select/>').
+                           append(make_select_options(global.roles, data.role))).
+                           append($('<br/>')).
+                           append($('<span/>').html('Person:')).
+                           append($('<select/>').
+                           append(make_select_options(global.team, data.user_username))).
+                           append($('<br/>')).
+                           append($('<input/>').attr('type','submit').attr('value', 'Change')));
             content.append($('<button/>').
                            attr('onclick', 'delete_event('+data.id+')').
                            html('Delete'));
-            content.append($('<br/>'));
-            content.append($('<span/>').html('Role:'))
-            content.append($('<select/>').
-                           append(make_select(global.roles, data.role)))
-            content.append($('<br/>'));
-            content.append($('<span/>').html('User:'))
-            content.append($('<select/>').
-                           append(make_select(global.team, data.user_username)))
-
             menu.set({
                 'content.text': content
             })
