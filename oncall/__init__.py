@@ -49,7 +49,7 @@ def _can_add_event(start_date, end_date, exclude_event = None):
         for e in events_all:
             if i >= e.start and i <= e.end:
                 count += 1
-        if count >= 2:
+        if count >= len(ROLES):
             return False
         i += one_day
     return True
@@ -94,6 +94,15 @@ def create_event():
         return Response(json.dumps({'result': 'failure'}),
                         mimetype='application/json')
 
+def _can_change_role(eventid, new_role):
+    e = Event.query.filter_by(id=eventid).first()
+    events = _get_events_for_dates(e.start, e.end, exclude_event=eventid)
+    flag = True
+    for event in events:
+        if event.role == new_role:
+            flag = False
+    return flag
+
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
     e = Event.query.filter_by(id=eventid).first()
@@ -102,9 +111,23 @@ def update_event(eventid):
             # TODO fix error handling
             e.start = _str_to_date(request.form.get('start'))
             e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
-    elif request.form.get('role'):
-        e.role = request.form.get('role')
-        e.user_username = request.form.get('user_username')
+
+    if request.form.get('role'):
+        if _can_change_role(eventid, request.form.get('role')):
+            e.role = request.form.get('role')
+            print 'can change role'
+
+    # newrole = request.form.get('role') if request.form.get('role') else e.role
+    # events = _get_events_for_dates(request.form.get('start'), request.form.get('end'), exclude_event=eventid)
+    # print events
+    # flag = True
+    # for event in events:
+    #     print event.role, newrole
+    #     if event.role == newrole:
+    #         flag = False
+    # if flag and len(events) > 0:
+    #     e.role = newrole
+    #     e.user_username = request.form.get('user_username')
         
     if db.session.commit():
         return Response(json.dumps({'result': 'success'}),
