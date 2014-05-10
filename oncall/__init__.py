@@ -87,6 +87,7 @@ def show(page):
 
 @app.route('/get_events')
 def get_events():
+    # TODO: Query for events lazily and only grab the ones that can be shown on the current month
     return Response(json.dumps([e.to_json() for e in Event.query.filter_by(team_slug=request.args.get('team')).all()]),
            mimetype='application/json')
 
