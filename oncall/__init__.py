@@ -102,10 +102,8 @@ def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
     events = _get_events_for_dates(start_date if start_date else e.start,
                                    end_date if end_date else e.end,
                                    exclude_event=eventid)
-    print events
     flag = True
     for event in events:
-        print event.role, new_role
         if event.role == new_role:
             flag = False
     return flag
