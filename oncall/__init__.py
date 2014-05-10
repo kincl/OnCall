@@ -81,9 +81,9 @@ def get_roles():
 def create_event():
     if _can_add_event(request.form.get('start'), request.form.get('end')):
         events = _get_events_for_dates(request.form.get('start'), request.form.get('end'))
-        newe = Event(request.form.get('username'), 
-                     'team-1', 
-                     ROLES[0] if events == [] else ROLES[1], 
+        newe = Event(request.form.get('username'),
+                     'team-1',
+                     ROLES[0] if events == [] else ROLES[1],
                      _str_to_date(request.form.get('start')))
 
         db.session.add(newe)
@@ -94,11 +94,18 @@ def create_event():
         return Response(json.dumps({'result': 'failure'}),
                         mimetype='application/json')
 
-def _can_change_role(eventid, new_role):
+def _can_change_role(eventid, new_role, start_date = None, end_date = None):
+    """ Can we change the of the given event to new_role, look up
+        the event and see if there are any events that have that 
+        role already """
     e = Event.query.filter_by(id=eventid).first()
-    events = _get_events_for_dates(e.start, e.end, exclude_event=eventid)
+    events = _get_events_for_dates(start_date if start_date else e.start,
+                                   end_date if end_date else e.end,
+                                   exclude_event=eventid)
+    print events
     flag = True
     for event in events:
+        print event.role, new_role
         if event.role == new_role:
             flag = False
     return flag
@@ -108,26 +115,16 @@ def update_event(eventid):
     e = Event.query.filter_by(id=eventid).first()
     if request.form.get('start'):
         if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
-            # TODO fix error handling
-            e.start = _str_to_date(request.form.get('start'))
-            e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+            if _can_change_role(eventid, e.role, request.form.get('start'), request.form.get('end')):
+                e.start = _str_to_date(request.form.get('start'))
+                e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
 
     if request.form.get('role'):
         if _can_change_role(eventid, request.form.get('role')):
             e.role = request.form.get('role')
-            print 'can change role'
 
-    # newrole = request.form.get('role') if request.form.get('role') else e.role
-    # events = _get_events_for_dates(request.form.get('start'), request.form.get('end'), exclude_event=eventid)
-    # print events
-    # flag = True
-    # for event in events:
-    #     print event.role, newrole
-    #     if event.role == newrole:
-    #         flag = False
-    # if flag and len(events) > 0:
-    #     e.role = newrole
-    #     e.user_username = request.form.get('user_username')
+    if request.form.get('user_username'):
+        e.user_username = request.form.get('user_username')
         
     if db.session.commit():
         return Response(json.dumps({'result': 'success'}),
