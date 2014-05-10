@@ -80,6 +80,60 @@ function get_color(offset) {
     return 'hsl('+num+', 60%, 50%)';
 }
 
+function update_calendar_team() {
+    if(typeof $('select#team option:selected').attr('id')=="undefined") {
+        setTimeout(update_calendar_team, 200);
+    }
+    else {
+        // now that things are loaded...
+        var team_id = $('select#team option:selected').attr('id');
+
+        // Set up team
+        $.getJSON( "/get_team_members/"+team_id, function( data ) {
+            var items = [];
+            var team_colors = {};
+            var team = [];
+            $.each( data, function( key, val ) {
+                var background = get_color(Object.keys(team_colors).length);
+                var member = $("<div/>", {
+                               "class": "team_member",
+                               "id": val['id'],
+                               text: val['name']
+                              })
+                $(member).draggable({
+                    zIndex: 999,
+                    revert: true,      // will cause the event to go back to its
+                    revertDuration: 0  //  original position after the drag
+                });
+                items.push(member);
+
+                $(member).css('background-color', background);
+                team_colors[val['id']] = background;
+                team.push([val['id'],val['name']])
+            });
+            global.team_colors = team_colors;
+            $("#team_members").html(items);
+            global.team = team;
+        });
+
+        $('#calendar').fullCalendar( 'removeEventSource',
+        {
+            url: "/get_events",
+        }); 
+        $('#calendar').fullCalendar( 'addEventSource', 
+        {
+            url: "/get_events",
+            type: 'GET',
+            data: {
+                team: team_id
+            },
+            error: function() {
+                alert('there was an error while fetching events!');
+            },
+        });
+    }
+}
+
 $(document).ready(function() {
     var menu = $('<div/>').qtip({
         //id: 'calendar',
@@ -106,32 +160,18 @@ $(document).ready(function() {
     }).qtip('api');
     global.menu = menu;
 
-    // Set up team
-    $.getJSON( "/get_team_members/team-1", function( data ) {
-        var items = [];
-        var team_colors = {};
-        var team = [];
+    // get teams
+    $.getJSON( "/get_teams", function( data ) {
+        var teams = [];
         $.each( data, function( key, val ) {
-            var background = get_color(Object.keys(team_colors).length);
-            var member = $("<div/>", {
-                           "class": "team_member",
-                           "id": val['id'],
-                           text: val['name']
-                          })
-            $(member).draggable({
-                zIndex: 999,
-                revert: true,      // will cause the event to go back to its
-                revertDuration: 0  //  original position after the drag
-            });
-            items.push(member);
-
-            $(member).css('background-color', background);
-            team_colors[val['id']] = background;
-            team.push([val['id'],val['name']])
+            teams.push([val['id'],val['name']])
         });
-        global.team_colors = team_colors;
-        $("#team_members").append(items);
-        global.team = team;
+        global.teams = teams;
+        $('#team_select').append($('<select/>').
+                            attr('id', 'team').
+                            attr('onchange', 'update_calendar_team()').
+                            append(make_select_options(teams, 'team-1'))).
+                        append($('<br/>'));
     });
 
     // get roles and add to global variable
@@ -144,7 +184,7 @@ $(document).ready(function() {
         firstDay: 1,
         editable: true,
         droppable: true,
-        events: "/get_events",
+        eventSources: [],
         
         eventDrop: updateAndRefetch,
 
@@ -153,7 +193,8 @@ $(document).ready(function() {
         drop: function(date, allDay) { // this function is called when something is dropped
             $.post('{{ url_for('create_event') }}',
                    {'start': formatDate(date),
-                    'username': $(this).attr('id')});
+                    'username': $(this).attr('id'),
+                    'team': $('select#team option:selected').attr('id')});
 
             $('#calendar').fullCalendar('refetchEvents');
         },
@@ -207,6 +248,8 @@ $(document).ready(function() {
             $(element).css('border', '1px solid '+global.team_colors[event.user_username]);
         }
     });
+
+    update_calendar_team();
 });
 </script>
 <style>
@@ -216,21 +259,28 @@ $(document).ready(function() {
         text-align: center;
         font-size: 14px;
         font-family: "Lucida Grande",Helvetica,Arial,Verdana,sans-serif;
-        }
+    }
         
     #wrap {
         width: 1100px;
         margin: 0 auto;
-        }
+    }
+
+    #team {
+        float: left;
+        width: 150px;  
+    }
+
+    #team_select {
+        padding-bottom: 10px; 
+    }
 
     #team_members {
-        float: left;
-        width: 150px;
         padding: 0 10px;
         border: 1px solid #ccc;
         background: #eee;
         text-align: left;
-        }
+    }
 
     .team_member { /* try to mimick the look of a real event */
         margin: 10px 0;
@@ -239,19 +289,19 @@ $(document).ready(function() {
         color: #fff;
         font-size: .85em;
         cursor: pointer;
-        }
+    }
 
     #loading {
         position: absolute;
         top: 5px;
         right: 5px;
-        }
+    }
 
     #calendar {
         float: right;
         width: 900px;
         margin: 0 auto;
-        }
+    }
 
     #menu {
         z-index: 100;
@@ -268,7 +318,10 @@ $(document).ready(function() {
 </head>
 <body>
 <div id='wrap'>
-<div id='team_members'></div>
+<div id='team'>
+  <div id='team_select'></div>
+  <div id='team_members'></div>
+</div>
 <div id='loading' style='display:none'>loading...</div>
 <div id='calendar'></div>
 </div>

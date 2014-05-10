@@ -10,20 +10,20 @@ class Event(db.Model):
     end = db.Column(db.Date)
 
     def __init__(self, user_username, team_slug, role, start, end = None):
-		self.user_username = user_username
-		self.team_slug = team_slug
-		self.role = role
-		self.start = start
-		self.end = start if end is None else end
+        self.user_username = user_username
+        self.team_slug = team_slug
+        self.role = role
+        self.start = start
+        self.end = start if end is None else end
 
     def to_json(self):
-    	r = dict(id=self.id,
+        r = dict(id=self.id,
                  start=self.start.isoformat(),
                  title="%s: %s" % (self.role, self.user.name),
                  user_username=self.user_username,
                  role=self.role)
-    	if self.end is not None:
-    		r['end'] = self.end.isoformat()
+        if self.end is not None:
+            r['end'] = self.end.isoformat()
         return r
 
     def __repr__(self):

@@ -25,5 +25,10 @@ class Team(db.Model):
         self.name = name
         self.slug = slugify(name)
 
+    def to_json(self):
+        r = dict(name=self.name,
+                 id=self.slug)
+        return r
+
     def __repr__(self):
         return '<Team %r>' % self.name
