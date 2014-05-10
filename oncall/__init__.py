@@ -94,7 +94,7 @@ def create_event():
         return Response(json.dumps({'result': 'failure'}),
                         mimetype='application/json')
 
-def _can_change_role(eventid, new_role, start_date = None, end_date = None):
+def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
     """ Can we change the of the given event to new_role, look up
         the event and see if there are any events that have that 
         role already """
@@ -110,17 +110,27 @@ def _can_change_role(eventid, new_role, start_date = None, end_date = None):
             flag = False
     return flag
 
+def _other_role(start_role):
+    """ TODO: make it work for more than two roles """
+    for role in ROLES:
+        if role != start_role:
+            return role
+
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
     e = Event.query.filter_by(id=eventid).first()
     if request.form.get('start'):
         if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
-            if _can_change_role(eventid, e.role, request.form.get('start'), request.form.get('end')):
+            if _is_role_valid(eventid, e.role, request.form.get('start'), request.form.get('end')):
                 e.start = _str_to_date(request.form.get('start'))
                 e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+            elif _is_role_valid(eventid, _other_role(e.role), request.form.get('start'), request.form.get('end')):
+                e.start = _str_to_date(request.form.get('start'))
+                e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+                e.role = _other_role(e.role)
 
     if request.form.get('role'):
-        if _can_change_role(eventid, request.form.get('role')):
+        if _is_role_valid(eventid, request.form.get('role')):
             e.role = request.form.get('role')
 
     if request.form.get('user_username'):
