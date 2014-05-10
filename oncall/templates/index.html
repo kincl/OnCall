@@ -178,16 +178,15 @@ $(document).ready(function() {
                            append($('<span/>').html('Role:')).
                            append($('<select/>').
                                   attr('id', 'role').
+                                  attr('onchange', 'modify_event_by_id('+data.id+')').
                                   append(make_select_options(global.roles, data.role))).
                            append($('<br/>')).
                            append($('<span/>').html('Person:')).
                            append($('<select/>').
                                   attr('id', 'user').
+                                  attr('onchange', 'modify_event_by_id('+data.id+')').
                                   append(make_select_options(global.team, data.user_username))).
                            append($('<br/>'));
-            content.append($('<button/>').
-                           attr('onclick', 'modify_event_by_id('+data.id+')').
-                           html('Modify'));
             content.append($('<button/>').
                            attr('onclick', 'delete_event_by_id('+data.id+')').
                            html('Delete'));
