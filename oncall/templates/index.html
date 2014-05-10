@@ -238,7 +238,9 @@ $(document).ready(function() {
         },
 
         dayRender: function (date, cell) {
-            if (date.getDay() == 6 || date.getDay() == 0) {
+            var today = new Date();
+            if ((date.getDay() == 6 || date.getDay() == 0) && 
+                 date.getDate() != today.getDate()) {
                 $(cell).css('background-color', '#f8f8f8')
             }
         },
