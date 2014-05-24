@@ -72,7 +72,8 @@ def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
     return flag
 
 def _other_role(start_role):
-    """ TODO: make it work for more than two roles """
+    """ Select the !this role """
+    # TODO: make it work for more than two roles
     for role in ROLES:
         if role != start_role:
             return role
@@ -89,6 +90,11 @@ def show(page):
 def get_events():
     # TODO: Query for events lazily and only grab the ones that can be shown on the current month
     return Response(json.dumps([e.to_json() for e in Event.query.filter_by(team_slug=request.args.get('team')).all()]),
+           mimetype='application/json')
+
+@app.route('/get_events2')
+def get_events2():
+    return Response('[{"editable": false, "projection": true, "end": "2014-06-08", "id": 100, "role": "Primary", "start": "2014-06-02", "title": "Primary: Another User", "user_username": "user2"}]',
            mimetype='application/json')
 
 @app.route('/get_teams')
@@ -130,10 +136,16 @@ def update_event(eventid):
     g.team = e.team_slug
     if request.form.get('start'):
         if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
-            if _is_role_valid(eventid, e.role, request.form.get('start'), request.form.get('end')):
+            if _is_role_valid(eventid,
+                              e.role,
+                              request.form.get('start'),
+                              request.form.get('end') if request.form.get('end') else request.form.get('start')):
                 e.start = _str_to_date(request.form.get('start'))
                 e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
-            elif _is_role_valid(eventid, _other_role(e.role), request.form.get('start'), request.form.get('end')):
+            elif _is_role_valid(eventid,
+                                _other_role(e.role),
+                                request.form.get('start'),
+                                request.form.get('end') if request.form.get('end') else request.form.get('start')):
                 e.start = _str_to_date(request.form.get('start'))
                 e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
                 e.role = _other_role(e.role)
@@ -144,7 +156,7 @@ def update_event(eventid):
 
     if request.form.get('user_username'):
         e.user_username = request.form.get('user_username')
-        
+
     if db.session.commit():
         return Response(json.dumps({'result': 'success'}),
                         mimetype='application/json')

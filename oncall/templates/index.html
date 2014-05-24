@@ -78,7 +78,7 @@ function get_color(offset) {
     if (!offset) { offset = 0; }
     var num=offset*102;
     num = num + parseInt(num/360)*79
-    return 'hsl('+num+', 60%, 50%)';
+    return num;
 }
 
 function update_calendar_team() {
@@ -108,7 +108,7 @@ function update_calendar_team() {
                 });
                 items.push(member);
 
-                $(member).css('background-color', background);
+                $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
                 team_colors[val['id']] = background;
                 team.push([val['id'],val['name']])
             });
@@ -117,10 +117,16 @@ function update_calendar_team() {
             global.team = team;
         });
 
+        // remove old event source and add the current one, this causes a refetch 
+        // of events
         $('#calendar').fullCalendar( 'removeEventSource',
         {
             url: "/get_events",
-        }); 
+        });
+        $('#calendar').fullCalendar( 'removeEventSource',
+        {
+            url: "/get_events2",
+        });
         $('#calendar').fullCalendar( 'addEventSource', 
         {
             url: "/get_events",
@@ -128,9 +134,14 @@ function update_calendar_team() {
             data: {
                 team: team_id
             },
+            // TODO: Better than alert() is needed...
             error: function() {
                 alert('there was an error while fetching events!');
             },
+        });
+        $('#calendar').fullCalendar( 'addEventSource', 
+        {
+            url: "/get_events2",
         });
     }
 }
@@ -211,31 +222,33 @@ $(document).ready(function() {
         viewDisplay: function() { global.menu.hide() },
 
         eventClick: function(data, event, view) {
-            var content = $('<div/>').
-                          attr('id', 'menu_content');
-            content.append($('<input/>').
-                           attr('type', 'hidden').
-                           attr('value', data.id));
-            content.append($('<br/>')).
-                           append($('<span/>').html('Role:')).
-                           append($('<select/>').
-                                  attr('id', 'role').
-                                  attr('onchange', 'modify_event_by_id('+data.id+')').
-                                  append(make_select_options(global.roles, data.role))).
-                           append($('<br/>')).
-                           append($('<span/>').html('Person:')).
-                           append($('<select/>').
-                                  attr('id', 'user').
-                                  attr('onchange', 'modify_event_by_id('+data.id+')').
-                                  append(make_select_options(global.team, data.user_username))).
-                           append($('<br/>'));
-            content.append($('<button/>').
-                           attr('onclick', 'delete_event_by_id('+data.id+')').
-                           html('Delete'));
-            menu.set({
-                'content.text': content
-            })
-            .reposition(event).show(event);
+            if (data.projection != true) {
+                var content = $('<div/>').
+                              attr('id', 'menu_content');
+                content.append($('<input/>').
+                               attr('type', 'hidden').
+                               attr('value', data.id));
+                content.append($('<br/>')).
+                               append($('<span/>').html('Role:')).
+                               append($('<select/>').
+                                      attr('id', 'role').
+                                      attr('onchange', 'modify_event_by_id('+data.id+')').
+                                      append(make_select_options(global.roles, data.role))).
+                               append($('<br/>')).
+                               append($('<span/>').html('Person:')).
+                               append($('<select/>').
+                                      attr('id', 'user').
+                                      attr('onchange', 'modify_event_by_id('+data.id+')').
+                                      append(make_select_options(global.team, data.user_username))).
+                               append($('<br/>'));
+                content.append($('<button/>').
+                               attr('onclick', 'delete_event_by_id('+data.id+')').
+                               html('Delete'));
+                menu.set({
+                    'content.text': content
+                })
+                .reposition(event).show(event);
+            }
         },
 
         dayRender: function (date, cell) {
@@ -247,8 +260,12 @@ $(document).ready(function() {
         },
 
         eventRender: function (event, element, view) {
-            $(element).css('background-color', global.team_colors[event.user_username]);
-            $(element).css('border', '1px solid '+global.team_colors[event.user_username]);
+            var opacity = "50%";
+            if (event.projection == true) {
+                opacity = "75%";
+            }
+            $(element).css('background-color', 'hsl('+global.team_colors[event.user_username]+', 70%, '+opacity+')');
+            $(element).css('border', '1px solid hsl('+global.team_colors[event.user_username]+', 70%, '+opacity+')');
         }
     });
 
