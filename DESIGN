@@ -32,5 +32,9 @@ Mass delete of future oncall events
 - set flag for autogen that makes for easier searching of cron'd event adds
 - can allow for delete/readd when default order is updated
 
+export as plain text of whos currently on call
+
 export for iCal format?
 - or use Google cal APIs?
+
+Event history

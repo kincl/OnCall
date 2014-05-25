@@ -2,6 +2,7 @@ from flask import Flask, request, render_template, abort, json, Response, g
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import TemplateNotFound
 from datetime import date, timedelta
+from copy import deepcopy as copy
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -11,9 +12,13 @@ db = SQLAlchemy(app)
 from oncall.models import Event
 from oncall.models import User
 from oncall.models import Team
+from oncall.models import OncallOrder
 
 ROLES = ['Primary',
          'Secondary']
+ONCALL_START = 1
+
+ONE_DAY = timedelta(1)
 
 def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
@@ -44,17 +49,15 @@ def _can_add_event(start_date, end_date, exclude_event = None):
 
     events_all = _get_events_for_dates(start_date, end_date, exclude_event)
 
-    one_day = timedelta(1)
-
     i = _str_to_date(start_date)
-    while i != _str_to_date(end_date if end_date else start_date) + one_day:
+    while i != _str_to_date(end_date if end_date else start_date) + ONE_DAY:
         count = 0
         for e in events_all:
             if i >= e.start and i <= e.end:
                 count += 1
         if count >= len(ROLES):
             return False
-        i += one_day
+        i += ONE_DAY
     return True
 
 def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
@@ -88,14 +91,80 @@ def show(page):
 
 @app.route('/get_events')
 def get_events():
-    # TODO: Query for events lazily and only grab the ones that can be shown on the current month
-    return Response(json.dumps([e.to_json() for e in Event.query.filter_by(team_slug=request.args.get('team')).all()]),
+    g.team = request.args.get('team')
+    events = _get_events_for_dates(date.fromtimestamp(float(request.args.get('start'))), 
+                                   date.fromtimestamp(float(request.args.get('end'))))
+    return Response(json.dumps([e.to_json() for e in events]),
            mimetype='application/json')
 
-@app.route('/get_events2')
-def get_events2():
-    return Response('[{"editable": false, "projection": true, "end": "2014-06-08", "id": 100, "role": "Primary", "start": "2014-06-02", "title": "Primary: Another User", "user_username": "user2"}]',
-           mimetype='application/json')
+def _get_monday(date):
+    if date.isoweekday() == ONCALL_START:
+        return date
+    else:
+        return _get_monday(date - ONE_DAY)
+
+def _serialize_and_delete_role(future_events, long_events, role):
+    """Helper func to stringify dates and delete a long running event role from
+       the dict and add it to the list of returned future events. Only really
+       useful in get_future_events()"""
+    if long_events.get(role):
+        long_events[role]['start'] = str(long_events[role]['start'])
+        long_events[role]['end'] = str(long_events[role]['end'])
+        future_events += [long_events[role]]
+        del long_events[role]
+
+@app.route('/get_future_events')
+def get_future_events():
+    g.team = request.args.get('team')
+
+    oncall_order = OncallOrder.query.filter_by(team_slug=g.team).order_by(OncallOrder.order, OncallOrder.role)
+    oncall_order_all = oncall_order.all()
+    max_oncall_order = len(oncall_order_all)/len(ROLES)
+
+    current_date = _get_monday(date.today())
+    # TODO: event ids will overlap with real events, do we care?
+    current_id = 1
+    current_order = 0
+    long_events = {}
+    future_events = []
+    if len(oncall_order_all):
+        while current_date != date.fromtimestamp(float(request.args.get('end'))):
+            events = _get_events_for_dates(current_date, current_date)
+            if len(events) != len(ROLES):
+                # find what roles are filled already
+                for role in ROLES:
+                    event_for_role = None
+                    for e in events:
+                        if e.role == role:
+                            event_for_role = e
+                            break
+                    if event_for_role is None:
+                        if long_events.get(role):
+                            long_events.get(role)['end'] = copy(current_date)
+                        else:
+                            oncall_now = oncall_order.filter_by(order = current_order, role=role).first()
+                            long_events[role] = dict(editable=False,
+                                                         projection=True,
+                                                         id=current_id,
+                                                         start=copy(current_date),
+                                                         end=copy(current_date),
+                                                         role=role,
+                                                         title=oncall_now.get_title(),
+                                                         user_username=oncall_now.user_username)
+                            current_id += 1
+                    else:
+                        # if we have a long event, break it out bc we have something in its place
+                        _serialize_and_delete_role(future_events, long_events, role)
+
+            # TODO: am I sure that this mod 7 works right?
+            if current_date.isoweekday() == ONCALL_START + 6 % 7:
+                for role in ROLES:
+                    _serialize_and_delete_role(future_events, long_events, role)
+                current_order = (current_order + 1) % max_oncall_order
+            current_date += ONE_DAY
+
+    return Response(json.dumps(future_events),
+                    mimetype='application/json')
 
 @app.route('/get_teams')
 def get_teams():

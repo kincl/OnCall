@@ -125,7 +125,7 @@ function update_calendar_team() {
         });
         $('#calendar').fullCalendar( 'removeEventSource',
         {
-            url: "/get_events2",
+            url: "/get_future_events",
         });
         $('#calendar').fullCalendar( 'addEventSource', 
         {
@@ -136,12 +136,20 @@ function update_calendar_team() {
             },
             // TODO: Better than alert() is needed...
             error: function() {
-                alert('there was an error while fetching events!');
+                //alert('there was an error while fetching events!');
             },
         });
         $('#calendar').fullCalendar( 'addEventSource', 
         {
-            url: "/get_events2",
+            url: "/get_future_events",
+            type: 'GET',
+            data: {
+                team: team_id
+            },
+            // TODO: Better than alert() is needed...
+            error: function() {
+                //alert('there was an error while fetching events!');
+            },
         });
     }
 }
@@ -320,7 +328,6 @@ $(document).ready(function() {
     #calendar {
         float: right;
         width: 900px;
-        margin: 0 auto;
     }
 
     #menu {

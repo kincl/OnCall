@@ -8,6 +8,9 @@ class User(db.Model):
     events = db.relationship('Event', 
                              backref='user',
                              lazy='dynamic')
+    oncallorder = db.relationship('OncallOrder', 
+                                  backref='user',
+                                  lazy='dynamic')
 
     def __init__(self, username, name, team_slug = None):
         self.username = username
