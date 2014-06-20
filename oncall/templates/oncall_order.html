@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>OnCall Order</title>
+<script src='{{ url_for('static', filename='fullcalendar/lib/jquery.min.js') }}'></script>
+<script src='{{ url_for('static', filename='jquery-ui-1.10.4.custom/js/jquery-ui-1.10.4.custom.min.js') }}'></script>
+<link href="{{ url_for('static', filename='jquery-ui-1.10.4.custom/css/ui-lightness/jquery-ui-1.10.4.custom.css') }}" rel="stylesheet">
+<style>
+#sortable1, #sortable2 { list-style-type: none; margin: 0; padding: 0 0 2.5em; float: left; margin-right: 10px; }
+#sortable1 li, #sortable2 li { margin: 0 5px 5px 5px; padding: 5px; font-size: 1.2em; width: 15fd0px; }
+#sortable3, #sortable4 { list-style-type: none; margin: 0; padding: 0 0 2.5em; float: left; margin-right: 10px; }
+#sortable3 li, #sortable4 li { margin: 0 5px 5px 5px; padding: 5px; font-size: 1.2em; width: 150px; }
+
+.ui-state-highlight { height: 1.5em; line-height: 1.2em; }
+
+.team_member { /* try to mimick the look of a real event */
+	margin: 10px 0;
+	padding: 2px 4px;
+	background: #3366CC;
+	color: #fff;
+	font-size: .85em;
+	cursor: pointer;
+}
+
+</style>
+
+<script>
+var global = {};
+global.team_colors = {};
+
+function get_color(username) {
+	if (global.team_colors[username] != undefined) { return global.team_colors[username] }
+	var offset = Object.keys(global.team_colors).length;
+	var color = offset*220;
+	global.team_colors[username] = color;
+    return color;
+}
+
+$(document).ready(function() {
+	var team_id = "team-1";
+	// Set up team
+	$.getJSON( "/get_oncall_order/"+team_id+"/Primary", function( data ) {
+	    var oncall = [];
+	    var not_oncall = [];
+	    var team = [];
+	    $.each( data['oncall'], function( key, val ) {
+	        var background = get_color(val['user']['id']);
+	        var member = $("<li/>", {
+	                       "class": "team_member",
+	                       "id": val['user']['id'],
+	                       text: val['user']['name']
+	                      })
+	        oncall.push(member);
+
+	        $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+	        team.push([val['user']['id'],val['user']['name']])
+	    });
+	    $.each( data['not_oncall'], function( key, val ) {
+	        var background = get_color(val['id']);
+	        var member = $("<li/>", {
+	                       "class": "team_member",
+	                       "id": val['id'],
+	                       text: val['name']
+	                      })
+	        not_oncall.push(member);
+
+	        $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+	        team.push([val['id'],val['name']])
+	    	});
+	    $("#sortable1").append(oncall);
+	    $("#sortable2").append(not_oncall);
+	    global.team = team;
+	});
+
+	$.getJSON( "/get_oncall_order/"+team_id+"/Secondary", function( data ) {
+	    var oncall = [];
+	    var not_oncall = [];
+	    var team = [];
+	    $.each( data['oncall'], function( key, val ) {
+	        var background = get_color(val['user']['id']);
+	        var member = $("<li/>", {
+	                       "class": "team_member",
+	                       "id": val['user']['id'],
+	                       text: val['user']['name']
+	                      })
+	        oncall.push(member);
+
+
+	        $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+	        team.push([val['user']['id'],val['user']['name']])
+	    });
+	    $.each( data['not_oncall'], function( key, val ) {
+	    	var background = get_color(val['id']);
+	        var member = $("<li/>", {
+	                       "class": "team_member",
+	                       "id": val['id'],
+	                       text: val['name']
+	                      })
+	        not_oncall.push(member);
+
+	        $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+	        team.push([val['id'],val['name']])
+	    });
+
+	    $("#sortable3").append(oncall);
+	   	$("#sortable4").append(not_oncall);
+	    global.team = team;
+	});
+
+	$(function() {
+	$( "#sortable1, #sortable2" ).sortable({
+	  connectWith: ".connectedSortable",
+	  placeholder: "ui-state-highlight"
+	}).disableSelection();
+	});
+	$(function() {
+	$( "#sortable3, #sortable4" ).sortable({
+	  connectWith: ".connectedSortablesecondary",
+	  placeholder: "ui-state-highlight"
+	}).disableSelection();
+	});
+});
+</script>
+</head>
+<body>
+ 
+<div style="float: left; width: 200px">
+<ul id="sortable1" class="connectedSortable">
+	On call order primary
+</ul>
+ 
+<ul id="sortable2" class="connectedSortable">
+	Not in rotation
+</ul>
+</div>
+<div style="float: left; width: 200px">
+<ul id="sortable3" class="connectedSortablesecondary">
+	On call order secondary
+</ul>
+ 
+<ul id="sortable4" class="connectedSortablesecondary">
+	Not in rotation
+</ul>
+</div>
+</body>
+</html>

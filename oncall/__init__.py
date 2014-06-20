@@ -144,13 +144,13 @@ def get_future_events():
                         else:
                             oncall_now = oncall_order.filter_by(order = current_order, role=role).first()
                             long_events[role] = dict(editable=False,
-                                                         projection=True,
-                                                         id=current_id,
-                                                         start=copy(current_date),
-                                                         end=copy(current_date),
-                                                         role=role,
-                                                         title=oncall_now.get_title(),
-                                                         user_username=oncall_now.user_username)
+                                                     projection=True,
+                                                     id=current_id,
+                                                     start=copy(current_date),
+                                                     end=copy(current_date),
+                                                     role=role,
+                                                     title=oncall_now.get_title(),
+                                                     user_username=oncall_now.user_username)
                             current_id += 1
                     else:
                         # if we have a long event, break it out bc we have something in its place
@@ -164,6 +164,22 @@ def get_future_events():
             current_date += ONE_DAY
 
     return Response(json.dumps(future_events),
+                    mimetype='application/json')
+
+@app.route('/get_oncall_order/<team>/<role>')
+def get_oncall_order(team, role):
+    # TODO: find who is not in the rotation and pass that list to client as well
+    oncall_order = OncallOrder.query.filter_by(team_slug=team, role=role).order_by(OncallOrder.order).all()
+
+    team_members = User.query.filter_by(team_slug=team).all()
+    for o in oncall_order:
+        if o.user in team_members:
+            team_members.remove(o.user)
+
+    response = json.dumps({'oncall': [o.to_json() for o in oncall_order],
+                           'not_oncall': [o.to_json() for o in team_members]})
+
+    return Response(response,
                     mimetype='application/json')
 
 @app.route('/get_teams')

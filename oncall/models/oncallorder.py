@@ -18,3 +18,6 @@ class OncallOrder(db.Model):
 
     def get_title(self):
         return "%s: %s" % (self.role, self.user.name)
+
+    def to_json(self):
+        return dict(order=self.order, role=self.role, team_slug=self.team_slug, user=self.user.to_json())

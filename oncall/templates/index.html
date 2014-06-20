@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>OnCall Calendar</title>
 <link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.css') }}' rel='stylesheet' />
 <link href='{{ url_for('static', filename='qtip2/jquery.qtip.min.css') }}' rel='stylesheet' />
 <!--<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />-->
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery.min.js') }}'></script>
-<script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>
+<!--<script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>-->
+<script src='{{ url_for('static', filename='jquery-ui-1.10.4.custom/js/jquery-ui-1.10.4.custom.min.js') }}'></script>
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.js') }}'></script>
 <script src='{{ url_for('static', filename='qtip2/jquery.qtip.min.js') }}'></script>
 <script>
@@ -76,9 +78,7 @@ function make_select_options(options, selected) {
 
 function get_color(offset) {
     if (!offset) { offset = 0; }
-    var num=offset*102;
-    num = num + parseInt(num/360)*79
-    return num;
+    return offset*220;
 }
 
 function update_calendar_team() {
