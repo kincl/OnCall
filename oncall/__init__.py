@@ -182,6 +182,22 @@ def get_oncall_order(team, role):
     return Response(response,
                     mimetype='application/json')
 
+@app.route('/update_oncall/<team>', methods=['POST'])
+def update_oncall(team):
+    for role in ROLES:
+        order_list = OncallOrder.query.filter_by(team_slug=team, role=role).order_by(OncallOrder.order).all()
+        for order in order_list:
+            db.session.delete(order)
+
+        order_num = 0
+        for user in request.form.getlist(role+'[]'):
+            db.session.add(OncallOrder(team, user, role, order_num))
+            order_num += 1
+
+    db.session.commit()
+    return Response(json.dumps({'result': 'success'}),
+                        mimetype='application/json')
+
 @app.route('/get_teams')
 def get_teams():
     return Response(json.dumps([t.to_json() for t in Team.query.all()]),
