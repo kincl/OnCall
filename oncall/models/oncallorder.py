@@ -1,5 +1,6 @@
 from oncall import db
 
+# TODO: ensure user only exists once?
 class OncallOrder(db.Model):
     __tablename__ = 'oncall_order'
     order = db.Column(db.Integer, primary_key=True)

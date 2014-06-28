@@ -4,6 +4,7 @@
 <title>OnCall Calendar</title>
 <link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.css') }}' rel='stylesheet' />
 <link href='{{ url_for('static', filename='qtip2/jquery.qtip.min.css') }}' rel='stylesheet' />
+<link href="{{ url_for('static', filename='jquery-ui-1.10.4.custom/css/smoothness/jquery-ui-1.10.4.custom.css') }}" rel="stylesheet">
 <!--<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />-->
 <script src='{{ url_for('static', filename='fullcalendar/lib/jquery.min.js') }}'></script>
 <!--<script src='{{ url_for('static', filename='fullcalendar/lib/jquery-ui.custom.min.js') }}'></script>-->
@@ -51,6 +52,18 @@ function updateAndRefetch(event, delta) {
     $('#calendar').fullCalendar('refetchEvents');
 }
 
+function updateOncall() {
+    var primary = [];
+    var secondary = [];
+    var team_id = $('select#team option:selected').attr('id');
+
+    $('ul#primary_oncall li').each(function(k, v) { primary.push($(v).attr('id')); });
+    $('ul#secondary_oncall li').each(function(k, v) { secondary.push($(v).attr('id')); });
+    $.post('{{ url_for("update_oncall", team="") }}' + team_id,
+           {'Primary': primary,
+            'Secondary': secondary});
+}
+
 /* Can handle either a array of values or
    an array of arrays of key, val pairs
 */
@@ -76,9 +89,12 @@ function make_select_options(options, selected) {
     return html_opts
 }
 
-function get_color(offset) {
-    if (!offset) { offset = 0; }
-    return offset*220;
+function get_color(username) {
+    if (global.team_colors[username] != undefined) { return global.team_colors[username] }
+    var offset = Object.keys(global.team_colors).length;
+    var color = offset*220;
+    global.team_colors[username] = color;
+    return color;
 }
 
 function update_calendar_team() {
@@ -87,15 +103,15 @@ function update_calendar_team() {
     }
     else {
         // now that things are loaded...
+        global.team_colors = {};
         var team_id = $('select#team option:selected').attr('id');
 
         // Set up team
         $.getJSON( "/get_team_members/"+team_id, function( data ) {
             var items = [];
-            var team_colors = {};
             var team = [];
             $.each( data, function( key, val ) {
-                var background = get_color(Object.keys(team_colors).length);
+                var background = get_color(val['id']);
                 var member = $("<div/>", {
                                "class": "team_member",
                                "id": val['id'],
@@ -109,10 +125,8 @@ function update_calendar_team() {
                 items.push(member);
 
                 $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
-                team_colors[val['id']] = background;
                 team.push([val['id'],val['name']])
             });
-            global.team_colors = team_colors;
             $("#team_members").html(items);
             global.team = team;
         });
@@ -154,7 +168,92 @@ function update_calendar_team() {
     }
 }
 
+function set_up_oncall_order(team_id, role, oncall_html, notoncall_html) {
+    $(oncall_html).empty();
+    $(oncall_html).text(role);
+    $(notoncall_html).empty();
+    $(notoncall_html).text("Not in rotation");
+
+    $.getJSON( "/get_oncall_order/"+team_id+"/"+role, function( data ) {
+        var oncall = [];
+        var not_oncall = [];
+        var team = [];
+        $.each( data['oncall'], function( key, val ) {
+            var background = get_color(val['user']['id']);
+            var member = $("<li/>", {
+                           "class": "team_member",
+                           "id": val['user']['id'],
+                           text: val['user']['name']
+                          })
+            oncall.push(member);
+
+            $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+            team.push([val['user']['id'],val['user']['name']])
+        });
+        $.each( data['not_oncall'], function( key, val ) {
+            var background = get_color(val['id']);
+            var member = $("<li/>", {
+                           "class": "team_member",
+                           "id": val['id'],
+                           text: val['name']
+                          })
+            not_oncall.push(member);
+
+            $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+            team.push([val['id'],val['name']])
+        });
+        $(oncall_html).append(oncall);
+        $(notoncall_html).append(not_oncall);
+
+        // re-center the dialog
+        $('#oncall_order').dialog({position: { my: "center", at: "center", of: window }});
+    });
+
+    $(oncall_html).sortable({
+      connectWith: notoncall_html,
+      placeholder: "ui-state-highlight"
+    }).disableSelection();
+    $(notoncall_html).sortable({
+      connectWith: oncall_html,
+      placeholder: "ui-state-highlight"
+    }).disableSelection();
+}
+
+function open_oncall_order_dialog() {
+    set_up_oncall_order($('select#team option:selected').attr('id'),
+                        'Primary',
+                        "#primary_oncall",
+                        "#primary_notoncall");
+    set_up_oncall_order($('select#team option:selected').attr('id'),
+                        'Secondary',
+                        "#secondary_oncall",
+                        "#secondary_notoncall");
+    $('#oncall_order').dialog('open');
+
+    $('.ui-widget-overlay').click(function () { $('#oncall_order').dialog('close'); });
+}
+
 $(document).ready(function() {
+    $('#oncall_order').dialog({
+        autoOpen: false,
+        modal: true,
+        title: "Oncall Order",
+        width: 475,
+        resizable: false,
+        draggable: false,
+        close: function( event, ui ) {
+            update_calendar_team();
+        },
+        buttons: [
+            {
+                text: "Update",
+                click: function() {
+                    updateOncall();
+                }
+            }
+        ]
+    });
+
     var menu = $('<div/>').qtip({
         //id: 'calendar',
         prerender: true,
@@ -272,8 +371,8 @@ $(document).ready(function() {
             if (event.projection == true) {
                 opacity = "75%";
             }
-            $(element).css('background-color', 'hsl('+global.team_colors[event.user_username]+', 70%, '+opacity+')');
-            $(element).css('border', '1px solid hsl('+global.team_colors[event.user_username]+', 70%, '+opacity+')');
+            $(element).css('background-color', 'hsl('+get_color(event.user_username)+', 70%, '+opacity+')');
+            $(element).css('border', '1px solid hsl('+get_color(event.user_username)+', 70%, '+opacity+')');
         }
     });
 
@@ -341,6 +440,15 @@ $(document).ready(function() {
         border: solid 2px #000;
     }
 
+    .primarySortable, .secondarySortable { 
+        list-style-type: none;
+    }
+
+    .ui-state-highlight { 
+        height: 1.5em;
+        line-height: 1.2em;
+    }
+
 </style>
 </head>
 <body>
@@ -348,9 +456,21 @@ $(document).ready(function() {
 <div id='team'>
   <div id='team_select'></div>
   <div id='team_members'></div>
+  <button onclick="open_oncall_order_dialog()">Oncall Order</button>
 </div>
 <div id='loading' style='display:none'>loading...</div>
 <div id='calendar'></div>
 </div>
+<div id='oncall_order'>
+<div style="float: left; width: 200px">
+    <ul id="primary_oncall" class="primarySortable"></ul>
+    <ul id="primary_notoncall" class="primarySortable"></ul>
+</div>
+<div style="float: left; width: 200px">
+    <ul id="secondary_oncall" class="secondarySortable"></ul>
+    <ul id="secondary_notoncall" class="secondarySortable"></ul>
+</div>
+</div>
 </body>
 </html>
+
