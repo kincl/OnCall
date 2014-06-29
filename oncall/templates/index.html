@@ -13,6 +13,7 @@
 <script src='{{ url_for('static', filename='qtip2/jquery.qtip.min.js') }}'></script>
 <script>
 var global = {};
+global.team_colors = {};
 var user_team = 'team-1';
 
 function pad(n, width, z) {
@@ -103,7 +104,6 @@ function update_calendar_team() {
     }
     else {
         // now that things are loaded...
-        global.team_colors = {};
         var team_id = $('select#team option:selected').attr('id');
 
         // Set up team
