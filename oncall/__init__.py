@@ -171,7 +171,7 @@ def get_oncall_order(team, role):
     # TODO: find who is not in the rotation and pass that list to client as well
     oncall_order = OncallOrder.query.filter_by(team_slug=team, role=role).order_by(OncallOrder.order).all()
 
-    team_members = User.query.filter_by(team_slug=team).all()
+    team_members = Team.query.filter_by(slug=team).first().users.order_by(User.username).all()
     for o in oncall_order:
         if o.user in team_members:
             team_members.remove(o.user)
@@ -205,7 +205,7 @@ def get_teams():
 
 @app.route('/get_team_members/<team>')
 def get_team_members(team):
-    return Response(json.dumps([u.to_json() for u in User.query.filter_by(team_slug=team).all()]),
+    return Response(json.dumps([u.to_json() for u in Team.query.filter_by(slug=team).first().users.order_by(User.username).all()]),
                     mimetype='application/json')
 
 @app.route('/get_roles')

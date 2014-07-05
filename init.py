@@ -10,17 +10,21 @@ db.create_all()
 
 team1 = Team('Team 1')
 team2 = Team('Team 2')
+db.session.add(team1)
+db.session.add(team2)
+db.session.commit()
+
+
 jkincl = User('jkincl', 'Jason Kincl', team1.slug)
 user1 = User('user1', 'Test User', team1.slug)
 user2 = User('user2', 'Another User', team1.slug)
 user3 = User('user3', 'Byzantine Candor', team1.slug)
-
-db.session.add(team1)
-db.session.add(team2)
 db.session.add(jkincl)
 db.session.add(user1)
 db.session.add(user2)
 db.session.add(user3)
+
+
 db.session.add(User('user4', 'Cottonmouth', team1.slug))
 db.session.add(User('user5', 'Bacon Ridge', team1.slug))
 db.session.add(User('user6', 'Black Pearl', team1.slug))

@@ -17,18 +17,14 @@ class Team(db.Model):
     __tablename__ = 'teams'
     slug = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
-    members = db.relationship('User', 
-                              backref='team',
-                              lazy='dynamic')
 
     def __init__(self, name):
         self.name = name
         self.slug = slugify(name)
 
     def to_json(self):
-        r = dict(name=self.name,
-                 id=self.slug)
-        return r
+        return dict(name=self.name,
+                    id=self.slug)
 
     def __repr__(self):
         return '<Team %r>' % self.name

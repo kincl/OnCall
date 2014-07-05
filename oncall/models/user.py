@@ -1,10 +1,19 @@
 from oncall import db
+from team import Team
+
+teams = db.Table('users_to_teams', 
+    db.Column('user_username', db.String(200), db.ForeignKey('users.username')),
+    db.Column('team_slug', db.String(200), db.ForeignKey('teams.slug'))
+)
 
 class User(db.Model):
     __tablename__ = 'users'
     username = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
-    team_slug = db.Column(db.String(200), db.ForeignKey('teams.slug'))
+    teams = db.relationship('Team',
+                            secondary=teams, 
+                            backref=db.backref('users', 
+                                               lazy='dynamic'))
     events = db.relationship('Event', 
                              backref='user',
                              lazy='dynamic')
@@ -15,10 +24,10 @@ class User(db.Model):
     def __init__(self, username, name, team_slug = None):
         self.username = username
         self.name = name
-        self.team_slug = team_slug
+        self.teams.append(Team.query.filter_by(slug = team_slug).first()) 
 
     def to_json(self):
-        return dict(name=self.name, id=self.username, team=self.team.name)
+        return dict(name=self.name, id=self.username)
 
     def __eq__(self, other):
         return type(self) is type(other) and self.username == other.username
