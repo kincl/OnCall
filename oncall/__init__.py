@@ -20,12 +20,14 @@ ONCALL_START = 1
 
 ONE_DAY = timedelta(1)
 
+
 def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
 
-def _get_events_for_dates(team, start_date, end_date, exclude_event = None):
-    start  = _str_to_date(start_date)
+
+def _get_events_for_dates(team, start_date, end_date, exclude_event=None):
+    start = _str_to_date(start_date)
     end = _str_to_date(end_date if end_date else start_date)
     events_start = Event.query.filter(start >= Event.start,
                                       start <= Event.end,
@@ -38,16 +40,19 @@ def _get_events_for_dates(team, start_date, end_date, exclude_event = None):
     events_inside = Event.query.filter(start <= Event.start,
                                        end >= Event.end,
                                        Event.id != exclude_event,
-                                        Event.team_slug == team)
+                                       Event.team_slug == team)
 
     return events_start.union(events_end, events_inside).all()
 
 
-def _can_add_event(team, start_date, end_date, exclude_event = None):
+def _can_add_event(team, start_date, end_date, exclude_event=None):
     """ Given a start and end date, make sure that there are not more
         than two events. """
 
-    events_all = _get_events_for_dates(team, start_date, end_date, exclude_event)
+    events_all = _get_events_for_dates(team,
+                                       start_date,
+                                       end_date,
+                                       exclude_event)
 
     i = _str_to_date(start_date)
     while i != _str_to_date(end_date if end_date else start_date) + ONE_DAY:
@@ -60,12 +65,13 @@ def _can_add_event(team, start_date, end_date, exclude_event = None):
         i += ONE_DAY
     return True
 
-def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
+
+def _is_role_valid(eventid, new_role, start_date=None, end_date=None):
     """ Can we change the of the given event to new_role, look up
-        the event and see if there are any events that have that 
+        the event and see if there are any events that have that
         role already """
     e = Event.query.filter_by(id=eventid).first()
-    events = _get_events_for_dates(e.team_slug, 
+    events = _get_events_for_dates(e.team_slug,
                                    start_date if start_date else e.start,
                                    end_date if end_date else e.end,
                                    exclude_event=eventid)
@@ -75,12 +81,14 @@ def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
             flag = False
     return flag
 
+
 def _other_role(start_role):
     """ Select the !this role """
     # TODO: make it work for more than two roles
     for role in ROLES:
         if role != start_role:
             return role
+
 
 @app.route('/', defaults={'page': 'index'})
 @app.route('/<page>')
@@ -90,6 +98,7 @@ def show(page):
     except TemplateNotFound:
         abort(404)
 
+
 @app.route('/get_events')
 def get_events():
     team = request.args.get('team')
@@ -97,13 +106,15 @@ def get_events():
                                    date.fromtimestamp(float(request.args.get('start'))),
                                    date.fromtimestamp(float(request.args.get('end'))))
     return Response(json.dumps([e.to_json() for e in events]),
-           mimetype='application/json')
+                    mimetype='application/json')
+
 
 def _get_monday(date):
     if date.isoweekday() == ONCALL_START:
         return date
     else:
         return _get_monday(date - ONE_DAY)
+
 
 def _serialize_and_delete_role(future_events, long_events, role):
     """Helper func to stringify dates and delete a long running event role from
@@ -114,6 +125,7 @@ def _serialize_and_delete_role(future_events, long_events, role):
         long_events[role]['end'] = str(long_events[role]['end'])
         future_events += [long_events[role]]
         del long_events[role]
+
 
 @app.route('/get_future_events')
 def get_future_events():
@@ -153,7 +165,7 @@ def get_future_events():
                     long_events[role]['end'] = deepcopy(current_date)
                 except KeyError:
                     # Build the long event
-                    oncall_now = oncall_order.filter_by(order=current_order, 
+                    oncall_now = oncall_order.filter_by(order=current_order,
                                                         role=role).first()
 
                     long_events[role] = dict(editable=False,
@@ -176,6 +188,7 @@ def get_future_events():
     return Response(json.dumps(future_events),
                     mimetype='application/json')
 
+
 @app.route('/get_oncall_order/<team>/<role>')
 def get_oncall_order(team, role):
     # TODO: find who is not in the rotation and pass that list to client as well
@@ -195,6 +208,7 @@ def get_oncall_order(team, role):
     return Response(response,
                     mimetype='application/json')
 
+
 @app.route('/update_oncall/<team>', methods=['POST'])
 def update_oncall(team):
     for role in ROLES:
@@ -211,12 +225,14 @@ def update_oncall(team):
 
     db.session.commit()
     return Response(json.dumps({'result': 'success'}),
-                        mimetype='application/json')
+                    mimetype='application/json')
+
 
 @app.route('/get_teams')
 def get_teams():
     return Response(json.dumps([t.to_json() for t in Team.query.all()]),
                     mimetype='application/json')
+
 
 @app.route('/get_team_members/<team>')
 def get_team_members(team):
@@ -228,10 +244,12 @@ def get_team_members(team):
     return Response(json.dumps(members),
                     mimetype='application/json')
 
+
 @app.route('/get_roles')
 def get_roles():
     return Response(json.dumps(ROLES),
                     mimetype='application/json')
+
 
 @app.route('/create_event', methods=['POST'])
 def create_event():
@@ -252,6 +270,7 @@ def create_event():
     else:
         return Response(json.dumps({'result': 'failure'}),
                         mimetype='application/json')
+
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
@@ -293,6 +312,7 @@ def update_event(eventid):
         return Response(json.dumps({'result': 'failure'}),
                         mimetype='application/json')
 
+
 @app.route('/delete_event/<eventid>', methods=['POST'])
 def delete_event(eventid):
     e = Event.query.filter_by(id=eventid).first()
@@ -300,5 +320,3 @@ def delete_event(eventid):
     db.session.commit()
     return Response(json.dumps({'result': 'success'}),
                     mimetype='application/json')
-
-
