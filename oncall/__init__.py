@@ -2,7 +2,7 @@ from flask import Flask, request, render_template, abort, json, Response, g
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import TemplateNotFound
 from datetime import date, timedelta
-from copy import deepcopy as copy
+from copy import deepcopy
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -116,52 +116,60 @@ def _serialize_and_delete_role(future_events, long_events, role):
 @app.route('/get_future_events')
 def get_future_events():
     g.team = request.args.get('team')
+    request_start = date.fromtimestamp(float(request.args.get('start')))
+    request_end = date.fromtimestamp(float(request.args.get('end')))
 
-    oncall_order = OncallOrder.query.filter_by(team_slug=g.team).order_by(OncallOrder.order, OncallOrder.role)
+    oncall_order = OncallOrder.query.filter_by(team_slug=g.team) \
+                                    .order_by(OncallOrder.order,
+                                              OncallOrder.role)
     oncall_order_all = oncall_order.all()
     max_oncall_order = len(oncall_order_all)/len(ROLES)
 
-    current_date = _get_monday(date.today())
+    if len(oncall_order_all) == 0:
+        return Response(json.dumps(list()),
+                        mimetype='application/json')
+
+    current_date = _get_monday(request_start)
     # TODO: event ids will overlap with real events, do we care?
     current_id = 1
     current_order = 0
     long_events = {}
     future_events = []
-    if len(oncall_order_all):
-        while current_date != date.fromtimestamp(float(request.args.get('end'))):
-            events = _get_events_for_dates(current_date, current_date)
-            if len(events) != len(ROLES):
-                # find what roles are filled already
-                for role in ROLES:
-                    event_for_role = None
-                    for e in events:
-                        if e.role == role:
-                            event_for_role = e
-                            break
-                    if event_for_role is None:
-                        if long_events.get(role):
-                            long_events.get(role)['end'] = copy(current_date)
-                        else:
-                            oncall_now = oncall_order.filter_by(order = current_order, role=role).first()
-                            long_events[role] = dict(editable=False,
-                                                     projection=True,
-                                                     id=current_id,
-                                                     start=copy(current_date),
-                                                     end=copy(current_date),
-                                                     role=role,
-                                                     title=oncall_now.get_title(),
-                                                     user_username=oncall_now.user_username)
-                            current_id += 1
-                    else:
-                        # if we have a long event, break it out bc we have something in its place
-                        _serialize_and_delete_role(future_events, long_events, role)
+    while current_date != request_end:
+        events = _get_events_for_dates(current_date, current_date)
+        event_roles = {}
+        for e in events:
+            event_roles[e.role] = e
 
-            # TODO: am I sure that this mod 7 works right?
-            if current_date.isoweekday() == ONCALL_START + 6 % 7:
-                for role in ROLES:
-                    _serialize_and_delete_role(future_events, long_events, role)
-                current_order = (current_order + 1) % max_oncall_order
-            current_date += ONE_DAY
+        for role in ROLES:
+            if role in event_roles.keys():
+                # stop the long running event because an event already exists
+                _serialize_and_delete_role(future_events, long_events, role)
+            else:
+                if long_events.get(role):
+                    # just increment they day, we are already building an event
+                    long_events.get(role)['end'] = deepcopy(current_date)
+                else:
+                    # Build the long event
+                    oncall_now = oncall_order.filter_by(order=current_order, 
+                                                        role=role).first()
+
+                    long_events[role] = dict(editable=False,
+                                             projection=True,
+                                             id=current_id,
+                                             start=deepcopy(current_date),
+                                             end=deepcopy(current_date),
+                                             role=role,
+                                             title=oncall_now.get_title(),
+                                             user_username=oncall_now.user_username)
+                    current_id += 1
+
+        # TODO: am I sure that this mod 7 works right?
+        if current_date.isoweekday() == ONCALL_START + 6 % 7:
+            for role in ROLES:
+                _serialize_and_delete_role(future_events, long_events, role)
+            current_order = (current_order + 1) % max_oncall_order
+        current_date += ONE_DAY
 
     return Response(json.dumps(future_events),
                     mimetype='application/json')
