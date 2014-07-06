@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, abort, json, Response, g
+from flask import Flask, request, render_template, abort, json, Response
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import TemplateNotFound
 from datetime import date, timedelta
@@ -24,30 +24,30 @@ def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
 
-def _get_events_for_dates(start_date, end_date, exclude_event = None):
+def _get_events_for_dates(team, start_date, end_date, exclude_event = None):
     start  = _str_to_date(start_date)
     end = _str_to_date(end_date if end_date else start_date)
     events_start = Event.query.filter(start >= Event.start,
                                       start <= Event.end,
                                       Event.id != exclude_event,
-                                      Event.team_slug == g.team)
+                                      Event.team_slug == team)
     events_end = Event.query.filter(end >= Event.start,
                                     end <= Event.end,
                                     Event.id != exclude_event,
-                                    Event.team_slug == g.team)
+                                    Event.team_slug == team)
     events_inside = Event.query.filter(start <= Event.start,
                                        end >= Event.end,
                                        Event.id != exclude_event,
-                                        Event.team_slug == g.team)
+                                        Event.team_slug == team)
 
     return events_start.union(events_end, events_inside).all()
 
 
-def _can_add_event(start_date, end_date, exclude_event = None):
+def _can_add_event(team, start_date, end_date, exclude_event = None):
     """ Given a start and end date, make sure that there are not more
         than two events. """
 
-    events_all = _get_events_for_dates(start_date, end_date, exclude_event)
+    events_all = _get_events_for_dates(team, start_date, end_date, exclude_event)
 
     i = _str_to_date(start_date)
     while i != _str_to_date(end_date if end_date else start_date) + ONE_DAY:
@@ -65,7 +65,8 @@ def _is_role_valid(eventid, new_role, start_date = None, end_date = None):
         the event and see if there are any events that have that 
         role already """
     e = Event.query.filter_by(id=eventid).first()
-    events = _get_events_for_dates(start_date if start_date else e.start,
+    events = _get_events_for_dates(e.team_slug, 
+                                   start_date if start_date else e.start,
                                    end_date if end_date else e.end,
                                    exclude_event=eventid)
     flag = True
@@ -91,8 +92,9 @@ def show(page):
 
 @app.route('/get_events')
 def get_events():
-    g.team = request.args.get('team')
-    events = _get_events_for_dates(date.fromtimestamp(float(request.args.get('start'))), 
+    team = request.args.get('team')
+    events = _get_events_for_dates(team,
+                                   date.fromtimestamp(float(request.args.get('start'))),
                                    date.fromtimestamp(float(request.args.get('end'))))
     return Response(json.dumps([e.to_json() for e in events]),
            mimetype='application/json')
@@ -115,11 +117,12 @@ def _serialize_and_delete_role(future_events, long_events, role):
 
 @app.route('/get_future_events')
 def get_future_events():
-    g.team = request.args.get('team')
+    """Build list of events that will occur based on current Oncall Order"""
+    team = request.args.get('team')
     request_start = date.fromtimestamp(float(request.args.get('start')))
     request_end = date.fromtimestamp(float(request.args.get('end')))
 
-    oncall_order = OncallOrder.query.filter_by(team_slug=g.team) \
+    oncall_order = OncallOrder.query.filter_by(team_slug=team) \
                                     .order_by(OncallOrder.order,
                                               OncallOrder.role)
     oncall_order_all = oncall_order.all()
@@ -136,20 +139,19 @@ def get_future_events():
     long_events = {}
     future_events = []
     while current_date != request_end:
-        events = _get_events_for_dates(current_date, current_date)
-        event_roles = {}
-        for e in events:
-            event_roles[e.role] = e
+        current_date_roles = {}
+        for e in _get_events_for_dates(team, current_date, current_date):
+            current_date_roles[e.role] = e
 
         for role in ROLES:
-            if role in event_roles.keys():
-                # stop the long running event because an event already exists
+            if role in current_date_roles.keys():
+                # stop the long running event because a real event exists
                 _serialize_and_delete_role(future_events, long_events, role)
             else:
-                if long_events.get(role):
+                try:
                     # just increment they day, we are already building an event
-                    long_events.get(role)['end'] = deepcopy(current_date)
-                else:
+                    long_events[role]['end'] = deepcopy(current_date)
+                except KeyError:
                     # Build the long event
                     oncall_now = oncall_order.filter_by(order=current_order, 
                                                         role=role).first()
@@ -177,9 +179,12 @@ def get_future_events():
 @app.route('/get_oncall_order/<team>/<role>')
 def get_oncall_order(team, role):
     # TODO: find who is not in the rotation and pass that list to client as well
-    oncall_order = OncallOrder.query.filter_by(team_slug=team, role=role).order_by(OncallOrder.order).all()
+    oncall_order = OncallOrder.query.filter_by(team_slug=team,
+                                               role=role) \
+                                    .order_by(OncallOrder.order).all()
 
-    team_members = Team.query.filter_by(slug=team).first().users.order_by(User.username).all()
+    team_members = Team.query.filter_by(slug=team).first() \
+                             .users.order_by(User.username).all()
     for o in oncall_order:
         if o.user in team_members:
             team_members.remove(o.user)
@@ -193,7 +198,9 @@ def get_oncall_order(team, role):
 @app.route('/update_oncall/<team>', methods=['POST'])
 def update_oncall(team):
     for role in ROLES:
-        order_list = OncallOrder.query.filter_by(team_slug=team, role=role).order_by(OncallOrder.order).all()
+        order_list = OncallOrder.query.filter_by(team_slug=team,
+                                                 role=role) \
+                                      .order_by(OncallOrder.order).all()
         for order in order_list:
             db.session.delete(order)
 
@@ -213,7 +220,12 @@ def get_teams():
 
 @app.route('/get_team_members/<team>')
 def get_team_members(team):
-    return Response(json.dumps([u.to_json() for u in Team.query.filter_by(slug=team).first().users.order_by(User.username).all()]),
+    members = []
+    for u in Team.query.filter_by(slug=team).first() \
+                 .users.order_by(User.username).all():
+        members.append(u.to_json())
+
+    return Response(json.dumps(members),
                     mimetype='application/json')
 
 @app.route('/get_roles')
@@ -223,9 +235,11 @@ def get_roles():
 
 @app.route('/create_event', methods=['POST'])
 def create_event():
-    g.team = request.form.get('team')
-    if _can_add_event(request.form.get('start'), request.form.get('end')):
-        events = _get_events_for_dates(request.form.get('start'), request.form.get('end'))
+    team = request.form.get('team')
+    if _can_add_event(team, request.form.get('start'), request.form.get('end')):
+        events = _get_events_for_dates(team,
+                                       request.form.get('start'),
+                                       request.form.get('end'))
         newe = Event(request.form.get('username'),
                      request.form.get('team'),
                      ROLES[0] if events == [] else _other_role(events[0].role),
@@ -241,22 +255,28 @@ def create_event():
 
 @app.route('/update_event/<eventid>', methods=['POST'])
 def update_event(eventid):
+    start = request.form.get('start')
+    end = request.form.get('end') if request.form.get('end') \
+                                  else request.form.get('start')
+
     e = Event.query.filter_by(id=eventid).first()
-    g.team = e.team_slug
-    if request.form.get('start'):
-        if _can_add_event(request.form.get('start'), request.form.get('end'), exclude_event=eventid):
+    if start:
+        if _can_add_event(e.team_slug,
+                          start,
+                          end,
+                          exclude_event=eventid):
             if _is_role_valid(eventid,
                               e.role,
-                              request.form.get('start'),
-                              request.form.get('end') if request.form.get('end') else request.form.get('start')):
-                e.start = _str_to_date(request.form.get('start'))
-                e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+                              start,
+                              end):
+                e.start = _str_to_date(start)
+                e.end = _str_to_date(end)
             elif _is_role_valid(eventid,
                                 _other_role(e.role),
-                                request.form.get('start'),
-                                request.form.get('end') if request.form.get('end') else request.form.get('start')):
-                e.start = _str_to_date(request.form.get('start'))
-                e.end = _str_to_date(request.form.get('end') if request.form.get('end') else request.form.get('start'))
+                                start,
+                                end):
+                e.start = _str_to_date(start)
+                e.end = _str_to_date(end)
                 e.role = _other_role(e.role)
 
     if request.form.get('role'):
