@@ -178,6 +178,7 @@ def get_future_events():
                                              user_username=oncall_now.user_username)
                     current_id += 1
 
+        # stop all long running event builds because we are at the end of the week
         # TODO: am I sure that this mod 7 works right?
         if current_date.isoweekday() == ONCALL_START + 6 % 7:
             for role in ROLES:
