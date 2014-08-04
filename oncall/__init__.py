@@ -144,10 +144,17 @@ def get_future_events():
         return Response(json.dumps(list()),
                         mimetype='application/json')
 
-    current_date = _get_monday(request_start)
+    # If we are looking ahead, figure out where to start in the order based on the current date
+    if request_start > date.today():
+        delta = _get_monday(request_start) - _get_monday(date.today())
+        current_order = delta.days / 7 % max_oncall_order
+        current_date = _get_monday(request_start)
+    else:
+        current_order = 0
+        current_date = _get_monday(date.today())
+
     # TODO: event ids will overlap with real events, do we care?
     current_id = 1
-    current_order = 0
     long_events = {}
     future_events = []
     while current_date != request_end:
