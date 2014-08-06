@@ -3,10 +3,10 @@ from oncall import db
 # TODO: ensure user only exists once?
 class OncallOrder(db.Model):
     __tablename__ = 'oncall_order'
-    order = db.Column(db.Integer, primary_key=True)
+    order = db.Column(db.Integer)
     team_slug = db.Column(db.String(200), db.ForeignKey('teams.slug'), primary_key=True)
     role = db.Column(db.String(200), primary_key=True)
-    user_username = db.Column(db.String(200), db.ForeignKey('users.username'))
+    user_username = db.Column(db.String(200), db.ForeignKey('users.username'), primary_key=True)
 
     def __init__(self, team, user, role, order):
         self.team_slug = team

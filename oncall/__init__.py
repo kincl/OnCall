@@ -13,6 +13,7 @@ from oncall.models import Event
 from oncall.models import User
 from oncall.models import Team
 from oncall.models import OncallOrder
+from oncall.models import Cron
 
 ROLES = ['Primary',
          'Secondary']
@@ -99,6 +100,19 @@ def show(page):
         abort(404)
 
 
+@app.route('/test')
+def test():
+    c = Cron.query.filter_by(name='test').first()
+    c.date_updated = date.today()
+    for role in ROLES:
+        oncall = OncallOrder.query.filter_by(team_slug='team-1', role=role).all()
+        print oncall
+        for oo in oncall:
+            oo.order = (oo.order + 1) % len(oncall)
+    db.session.commit()
+    return Response()
+
+
 @app.route('/get_events')
 def get_events():
     team = request.args.get('team')
@@ -158,12 +172,12 @@ def get_future_events():
     long_events = {}
     future_events = []
     while current_date != request_end:
-        current_date_roles = {}
+        current_date_roles = []
         for e in _get_events_for_dates(team, current_date, current_date):
-            current_date_roles[e.role] = e
+            current_date_roles.append(e.role)
 
         for role in ROLES:
-            if role in current_date_roles.keys():
+            if role in current_date_roles:
                 # stop the long running event because a real event exists
                 _serialize_and_delete_role(future_events, long_events, role)
             else:

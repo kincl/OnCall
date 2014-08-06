@@ -2,6 +2,7 @@ from oncall import db
 from oncall.models import Team
 from oncall.models import Event
 from oncall.models import User
+from oncall.models import Cron
 from oncall.models import OncallOrder
 
 from datetime import date
@@ -58,5 +59,7 @@ db.session.add(OncallOrder(team1.slug, user3.username, "Primary", 2))
 db.session.add(OncallOrder(team1.slug, user2.username, "Secondary", 2))
 db.session.add(OncallOrder(team1.slug, user1.username, "Primary", 3))
 db.session.add(OncallOrder(team1.slug, user3.username, "Secondary", 3))
+
+db.session.add(Cron('test'))
 
 db.session.commit()
