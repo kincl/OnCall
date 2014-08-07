@@ -18,20 +18,20 @@ function formatDate(d) {
 }
 
 function modify_event_by_id(event_id) {
-    $.post('/update_event/' + event_id,
+    $.post('/'+global.team+'/event/'+event_id,
            {'user_username': $('div#menu_content #user option:selected').attr('id'),
             'role': $('div#menu_content #role option:selected').val()});
     $('#calendar').fullCalendar('refetchEvents');
 }
 
 function delete_event_by_id(event_id) {
-    $.post('/delete_event/' + event_id);
+    $.post('/'+global.team+'/event/delete/'+event_id);
     $('#calendar').fullCalendar('refetchEvents');
     global.menu.hide();
 }
 
 function updateAndRefetch(event, delta) {
-    $.post('/update_event/' + event.id,
+    $.post('/'+global.team+'/event/'+event.id,
            {'start': formatDate(event.start),
             'end': formatDate(event.end),
             'username': $(this).attr('id')});
@@ -41,11 +41,11 @@ function updateAndRefetch(event, delta) {
 function updateOncall() {
     var primary = [];
     var secondary = [];
-    var team_id = $('select#team option:selected').attr('id');
+    //var team_id = $('select#team option:selected').attr('id');
 
     $('ul#primary_oncall li').each(function(k, v) { primary.push($(v).attr('id')); });
     $('ul#secondary_oncall li').each(function(k, v) { secondary.push($(v).attr('id')); });
-    $.post('/update_oncall/' + team_id,
+    $.post('/'+global.team+'/oncallOrder',
            {'Primary': primary,
             'Secondary': secondary});
 }
@@ -84,15 +84,15 @@ function get_color(username) {
 }
 
 function update_calendar_team() {
-    if(typeof $('select#team option:selected').attr('id')=="undefined") {
+    if(typeof global.team=="undefined") {
         setTimeout(update_calendar_team, 200);
     }
     else {
         // now that things are loaded...
-        var team_id = $('select#team option:selected').attr('id');
+        //var team_id = $('select#team option:selected').attr('id');
 
         // Set up team
-        $.getJSON( "/get_team_members/"+team_id, function( data ) {
+        $.getJSON( '/'+global.team+'/members', function( data ) {
             var items = [];
             var team = [];
             $.each( data, function( key, val ) {
@@ -113,53 +113,45 @@ function update_calendar_team() {
                 team.push([val['id'],val['name']]);
             });
             $("#team_members").html(items);
-            global.team = team;
+            global.team_members = team;
         });
 
         // remove old event source and add the current one, this causes a refetch 
         // of events
-        $('#calendar').fullCalendar( 'removeEventSource',
-        {
-            url: "/get_events",
-        });
-        $('#calendar').fullCalendar( 'removeEventSource',
-        {
-            url: "/get_future_events",
-        });
-        $('#calendar').fullCalendar( 'addEventSource',
-        {
-            url: "/get_events",
+        $('#calendar').fullCalendar( 'removeEventSource',global.event_source);
+        $('#calendar').fullCalendar( 'removeEventSource',global.predict_event_source);
+
+        event_source = {
+            url: '/'+global.team+'/events',
             type: 'GET',
-            data: {
-                team: team_id
-            },
             // TODO: Better than alert() is needed...
             error: function() {
                 //alert('there was an error while fetching events!');
             },
-        });
-        $('#calendar').fullCalendar( 'addEventSource',
-        {
-            url: "/get_future_events",
+        };
+        global.event_source = event_source;
+        $('#calendar').fullCalendar( 'addEventSource', event_source);
+
+        predict_event_source = {
+            url: '/'+global.team+'/predict_events',
             type: 'GET',
-            data: {
-                team: team_id
-            },
             // TODO: Better than alert() is needed...
             error: function() {
                 //alert('there was an error while fetching events!');
             },
-        });
+        };
+        global.predict_event_source = predict_event_source;
+        $('#calendar').fullCalendar( 'addEventSource', predict_event_source);
     }
 }
 
-function set_up_oncall_order(team_id, role, oncall_html, notoncall_html) {
+function set_up_oncall_order(role, oncall_html, notoncall_html) {
     $(oncall_html).empty();
     $(oncall_html).text(role);
     $(notoncall_html).empty();
     $(notoncall_html).text("Not in rotation");
 
-    $.getJSON( "/get_oncall_order/"+team_id+"/"+role, function( data ) {
+    $.getJSON('/'+global.team+'/oncallOrder/'+role, function( data ) {
         var oncall = [];
         var not_oncall = [];
         var team = [];
@@ -202,27 +194,25 @@ function set_up_oncall_order(team_id, role, oncall_html, notoncall_html) {
 }
 
 function open_oncall_order_dialog() {
-    set_up_oncall_order($('select#team option:selected').attr('id'),
-                        'Primary',
+    set_up_oncall_order('Primary',
                         "#primary_oncall",
                         "#primary_notoncall");
-    set_up_oncall_order($('select#team option:selected').attr('id'),
-                        'Secondary',
+    set_up_oncall_order('Secondary',
                         "#secondary_oncall",
                         "#secondary_notoncall");
 }
 
-function get_param( name )
-{
-  name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
-  var regexS = "[\\?&]"+name+"=([^&#]*)";
-  var regex = new RegExp( regexS );
-  var results = regex.exec( window.location.href );
-  if( results === null )
-    return null;
-  else
-    return results[1];
-}
+// function get_param( name )
+// {
+//   name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+//   var regexS = "[\\?&]"+name+"=([^&#]*)";
+//   var regex = new RegExp( regexS );
+//   var results = regex.exec( window.location.href );
+//   if( results === null )
+//     return null;
+//   else
+//     return results[1];
+// }
 
 $(document).ready(function() {
     $('#oncallOrderModal').on('hide.bs.modal', function (e) {
@@ -255,21 +245,22 @@ $(document).ready(function() {
     global.menu = menu;
 
     // get teams
-    $.getJSON( "/get_teams", function( data ) {
+    $.getJSON( "/teams", function( data ) {
         var teams = [];
         $.each( data, function( key, val ) {
             teams.push([val['id'],val['name']]);
+            global.team = val['id']; // JASON
         });
         global.teams = teams;
-        $('#team_select').append($('<select/>').
-                            attr('id', 'team').
-                            attr('onchange', 'update_calendar_team()').
-                            append(make_select_options(teams, get_param('t')))).
-                        append($('<br/>'));
+        // $('#team_select').append($('<select/>').
+        //                     attr('id', 'team').
+        //                     attr('onchange', 'update_calendar_team()').
+        //                     append(make_select_options(teams, get_param('t'))))
+        //                 .append($('<br/>'));
     });
 
     // get roles and add to global variable
-    $.getJSON( "/get_roles", function( data ) {
+    $.getJSON( "/roles", function( data ) {
         global.roles = data;
     });
 
@@ -285,10 +276,9 @@ $(document).ready(function() {
         eventResize: updateAndRefetch,
 
         drop: function(date, allDay) { // this function is called when something is dropped
-            $.post('/create_event',
+            $.post('/'+global.team+'/event',
                    {'start': formatDate(date),
-                    'username': $(this).attr('id'),
-                    'team': $('select#team option:selected').attr('id')});
+                    'username': $(this).attr('id')});
 
             $('#calendar').fullCalendar('refetchEvents');
         },
@@ -305,24 +295,24 @@ $(document).ready(function() {
 
         eventClick: function(data, event, view) {
             if (data.projection !== true) {
-                var content = $('<div/>').
-                              attr('id', 'menu_content');
-                content.append($('<input/>').
-                               attr('type', 'hidden').
-                               attr('value', data.id));
-                content.append($('<br/>')).
-                               append($('<span/>').html('Role:')).
-                               append($('<select/>').
-                                      attr('id', 'role').
-                                      attr('onchange', 'modify_event_by_id('+data.id+')').
-                                      append(make_select_options(global.roles, data.role))).
-                               append($('<br/>')).
-                               append($('<span/>').html('Person:')).
-                               append($('<select/>').
-                                      attr('id', 'user').
-                                      attr('onchange', 'modify_event_by_id('+data.id+')').
-                                      append(make_select_options(global.team, data.user_username))).
-                               append($('<br/>'));
+                var content = $('<div/>')
+                              .attr('id', 'menu_content');
+                content.append($('<input/>')
+                               .attr('type', 'hidden')
+                               .attr('value', data.id));
+                content.append($('<br/>'))
+                               .append($('<span/>').html('Role:'))
+                               .append($('<select/>')
+                                      .attr('id', 'role')
+                                      .attr('onchange', 'modify_event_by_id('+data.id+')')
+                                      .append(make_select_options(global.roles, data.role)))
+                               .append($('<br/>'))
+                               .append($('<span/>').html('Person:'))
+                               .append($('<select/>')
+                                      .attr('id', 'user')
+                                      .attr('onchange', 'modify_event_by_id('+data.id+')')
+                                      .append(make_select_options(global.team_members, data.user_username)))
+                               .append($('<br/>'));
                 content.append($('<button/>').
                                attr('onclick', 'delete_event_by_id('+data.id+')').
                                html('Delete'));
@@ -352,4 +342,13 @@ $(document).ready(function() {
     });
 
     update_calendar_team();
+    // google_cal = {
+    //     url: 'https://www.google.com/calendar/feeds/en.usa%23holiday%40group.v.calendar.google.com/public/basic',
+    //     className: 'gcal-event',
+    //     // TODO: Better than alert() is needed...
+    //     error: function() {
+    //         //alert('there was an error while fetching events!');
+    //     },
+    // };
+    // $('#calendar').fullCalendar( 'addEventSource', google_cal);
 });

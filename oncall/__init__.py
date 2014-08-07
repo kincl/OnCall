@@ -91,31 +91,31 @@ def _other_role(start_role):
             return role
 
 
-@app.route('/', defaults={'page': 'index'})
-@app.route('/<page>')
-def show(page):
+# TODO: FIX
+@app.route('/', defaults={'team': 'team-1'})
+@app.route('/<team>')
+def calendar(team):
     try:
-        return render_template('%s.html' % page)
+        return render_template('index.html')
     except TemplateNotFound:
         abort(404)
 
 
-@app.route('/test')
-def test():
-    c = Cron.query.filter_by(name='test').first()
-    c.date_updated = date.today()
-    for role in ROLES:
-        oncall = OncallOrder.query.filter_by(team_slug='team-1', role=role).all()
-        print oncall
-        for oo in oncall:
-            oo.order = (oo.order + 1) % len(oncall)
-    db.session.commit()
-    return Response()
+@app.route('/roles')
+def get_roles():
+    return Response(json.dumps(ROLES),
+                    mimetype='application/json')
 
 
-@app.route('/get_events')
-def get_events():
-    team = request.args.get('team')
+@app.route('/teams')
+def get_teams():
+    return Response(json.dumps([t.to_json() for t in Team.query.all()]),
+                    mimetype='application/json')
+
+
+@app.route('/<team>/events')
+def get_events(team):
+    #team = request.args.get('team')
     events = _get_events_for_dates(team,
                                    date.fromtimestamp(float(request.args.get('start'))),
                                    date.fromtimestamp(float(request.args.get('end'))))
@@ -141,10 +141,10 @@ def _serialize_and_delete_role(future_events, long_events, role):
         del long_events[role]
 
 
-@app.route('/get_future_events')
-def get_future_events():
+@app.route('/<team>/predict_events')
+def get_future_events(team):
     """Build list of events that will occur based on current Oncall Order"""
-    team = request.args.get('team')
+    #team = request.args.get('team')
     request_start = date.fromtimestamp(float(request.args.get('start')))
     request_end = date.fromtimestamp(float(request.args.get('end')))
 
@@ -191,7 +191,7 @@ def get_future_events():
 
                     long_events[role] = dict(editable=False,
                                              projection=True,
-                                             id=current_id,
+                                             id='prediction_%s' % current_id,
                                              start=deepcopy(current_date),
                                              end=deepcopy(current_date),
                                              role=role,
@@ -211,7 +211,20 @@ def get_future_events():
                     mimetype='application/json')
 
 
-@app.route('/get_oncall_order/<team>/<role>')
+@app.route('/oncallOrder/rotate')
+def rotate_oncall():
+    c = Cron.query.filter_by(name='test').first()
+    c.date_updated = date.today()
+    for role in ROLES:
+        oncall = OncallOrder.query.filter_by(team_slug='team-1', role=role).all()
+        print oncall
+        for oo in oncall:
+            oo.order = (oo.order + 1) % len(oncall)
+    db.session.commit()
+    return Response()
+
+
+@app.route('/<team>/oncallOrder/<role>')
 def get_oncall_order(team, role):
     # TODO: find who is not in the rotation and pass that list to client as well
     oncall_order = OncallOrder.query.filter_by(team_slug=team,
@@ -231,7 +244,7 @@ def get_oncall_order(team, role):
                     mimetype='application/json')
 
 
-@app.route('/update_oncall/<team>', methods=['POST'])
+@app.route('/<team>/oncallOrder', methods=['POST'])
 def update_oncall(team):
     for role in ROLES:
         order_list = OncallOrder.query.filter_by(team_slug=team,
@@ -250,13 +263,7 @@ def update_oncall(team):
                     mimetype='application/json')
 
 
-@app.route('/get_teams')
-def get_teams():
-    return Response(json.dumps([t.to_json() for t in Team.query.all()]),
-                    mimetype='application/json')
-
-
-@app.route('/get_team_members/<team>')
+@app.route('/<team>/members')
 def get_team_members(team):
     members = []
     for u in Team.query.filter_by(slug=team).first() \
@@ -267,21 +274,15 @@ def get_team_members(team):
                     mimetype='application/json')
 
 
-@app.route('/get_roles')
-def get_roles():
-    return Response(json.dumps(ROLES),
-                    mimetype='application/json')
-
-
-@app.route('/create_event', methods=['POST'])
-def create_event():
-    team = request.form.get('team')
+@app.route('/<team>/event', methods=['POST'])
+def create_event(team):
+    #team = request.form.get('team')
     if _can_add_event(team, request.form.get('start'), request.form.get('end')):
         events = _get_events_for_dates(team,
                                        request.form.get('start'),
                                        request.form.get('end'))
         newe = Event(request.form.get('username'),
-                     request.form.get('team'),
+                     team,
                      ROLES[0] if events == [] else _other_role(events[0].role),
                      _str_to_date(request.form.get('start')))
 
@@ -294,8 +295,8 @@ def create_event():
                         mimetype='application/json')
 
 
-@app.route('/update_event/<eventid>', methods=['POST'])
-def update_event(eventid):
+@app.route('/<team>/event/<eventid>', methods=['POST'])
+def update_event(team, eventid):
     start = request.form.get('start')
     end = request.form.get('end') if request.form.get('end') \
                                   else request.form.get('start')
@@ -335,8 +336,8 @@ def update_event(eventid):
                         mimetype='application/json')
 
 
-@app.route('/delete_event/<eventid>', methods=['POST'])
-def delete_event(eventid):
+@app.route('/<team>/event/delete/<eventid>', methods=['POST'])
+def delete_event(team, eventid):
     e = Event.query.filter_by(id=eventid).first()
     db.session.delete(e)
     db.session.commit()

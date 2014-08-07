@@ -14,6 +14,7 @@
 <!--<link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.print.css') }}' rel='stylesheet' media='print' />-->
 <link href='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.css') }}' rel='stylesheet' />
 <script src='{{ url_for('static', filename='fullcalendar/fullcalendar/fullcalendar.js') }}'></script>
+<script src='{{ url_for('static', filename='fullcalendar/fullcalendar/gcal.js') }}'></script>
 
 <link href='{{ url_for('static', filename='qtip2/jquery.qtip.min.css') }}' rel='stylesheet' />
 <script src='{{ url_for('static', filename='qtip2/jquery.qtip.min.js') }}'></script>
@@ -125,8 +126,8 @@ body {
             <li class="dropdown">
                 <a href="#" class="dropdown-toggle" data-toggle="dropdown">Team <span class="caret"></span></a>
                 <ul class="dropdown-menu" role="menu">
-                    <li><a href="?t=team-1">team-1</a></li>
-                    <li><a href="?t=team-2">team-2</a></li>
+                    <li><a onclick="global.team = 'team-1'; update_calendar_team()" href="#">team-1</a></li>
+                    <li><a onclick="global.team = 'team-2'; update_calendar_team()" href="#">team-2</a></li>
                 </ul>
             </li>
             <!-- <li><a href="#" onclick="open_oncall_order_dialog()">Change Oncall Order</a></li> -->
@@ -145,7 +146,7 @@ body {
       <div class="hidden-xs hidden-sm col-md-2 sidebar">
 
         <div id='team'>
-          <div id='team_select'></div>
+          <!-- <div id='team_select'></div> -->
           <div class='well' id='team_members'></div>
         </div>
 
@@ -159,7 +160,7 @@ body {
 
 
   <!-- Modal -->
-  <div class="modal" id="oncallOrderModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal" id="oncallOrderModal" tabindex="-1" role="dialog" aria-labelledby="oncallOrderModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
