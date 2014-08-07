@@ -103,7 +103,13 @@ def calendar(team):
 
 @app.route('/list')
 def current_oncall():
-    return render_template('list.html')
+    current_oncall = {}
+    for team in Team.query.all():
+        current_team = {}
+        current_oncall[team.name] = current_team
+        for event in _get_events_for_dates(team.slug, date.today(), date.today()):
+            current_team[event.role] = event.user
+    return render_template('list.html', oncall=current_oncall, roles=ROLES)
 
 
 @app.route('/roles')
