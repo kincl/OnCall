@@ -100,6 +100,9 @@ def calendar(team):
     except TemplateNotFound:
         abort(404)
 
+@app.route('/list')
+def current_oncall():
+    return render_template('list.html')
 
 @app.route('/roles')
 def get_roles():
@@ -140,6 +143,12 @@ def _serialize_and_delete_role(future_events, long_events, role):
         future_events += [long_events[role]]
         del long_events[role]
 
+def _filter_events_by_date(events, filter_date):
+    return_events = []
+    for event in events:
+        if filter_date >= event.start and filter_date <= event.end:
+            return_events.append(event)
+    return return_events
 
 @app.route('/<team>/predict_events')
 def get_future_events(team):
@@ -167,13 +176,14 @@ def get_future_events(team):
         current_order = 0
         current_date = _get_monday(date.today())
 
-    # TODO: event ids will overlap with real events, do we care?
     current_id = 1
     long_events = {}
     future_events = []
+    real_events = _get_events_for_dates(team, current_date, request_end)
     while current_date != request_end:
         current_date_roles = []
-        for e in _get_events_for_dates(team, current_date, current_date):
+        # TODO: Get this once for the entire request and cache
+        for e in _filter_events_by_date(real_events, current_date):
             current_date_roles.append(e.role)
 
         for role in ROLES:
