@@ -100,9 +100,11 @@ def calendar(team):
     except TemplateNotFound:
         abort(404)
 
+
 @app.route('/list')
 def current_oncall():
     return render_template('list.html')
+
 
 @app.route('/roles')
 def get_roles():
@@ -143,12 +145,14 @@ def _serialize_and_delete_role(future_events, long_events, role):
         future_events += [long_events[role]]
         del long_events[role]
 
+
 def _filter_events_by_date(events, filter_date):
     return_events = []
     for event in events:
         if filter_date >= event.start and filter_date <= event.end:
             return_events.append(event)
     return return_events
+
 
 @app.route('/<team>/predict_events')
 def get_future_events(team):
@@ -182,7 +186,6 @@ def get_future_events(team):
     real_events = _get_events_for_dates(team, current_date, request_end)
     while current_date != request_end:
         current_date_roles = []
-        # TODO: Get this once for the entire request and cache
         for e in _filter_events_by_date(real_events, current_date):
             current_date_roles.append(e.role)
 
@@ -223,15 +226,52 @@ def get_future_events(team):
 
 @app.route('/oncallOrder/rotate')
 def rotate_oncall():
-    c = Cron.query.filter_by(name='test').first()
-    c.date_updated = date.today()
-    for role in ROLES:
-        oncall = OncallOrder.query.filter_by(team_slug='team-1', role=role).all()
-        print oncall
-        for oo in oncall:
-            oo.order = (oo.order + 1) % len(oncall)
-    db.session.commit()
-    return Response()
+    c = Cron.query.filter_by(name='oncall_rotate').first()
+    if c is None:
+        db.session.add(Cron('oncall_rotate'))
+    else:
+        c.date_updated = date.today()
+
+    for team in Team.query.all():
+        currently_oncall = {}
+        for role in ROLES:
+            oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
+            for oo in oncall:
+                oo.order = (oo.order - 1) % len(oncall)
+                if oo.order == 0:
+                    currently_oncall[role] = oo
+
+        db.session.commit()
+
+        start_date = _get_monday(date.today())
+        end_date = start_date + timedelta(7)
+        real_events = _get_events_for_dates(team.slug, start_date, end_date)
+        current_date = start_date
+        build_events = {}
+        while current_date != end_date:
+            current_date_roles = []
+            for e in _filter_events_by_date(real_events, current_date):
+                current_date_roles.append(e.role)
+            for role in ROLES:
+                if role in current_date_roles:
+                    if build_events.get(role, None):
+                        db.session.add(build_events.get(role))
+                        del build_events[role]
+                else:
+                    if build_events.get(role, None):
+                        build_events.get(role).end = deepcopy(current_date)
+                    else:
+                        build_events[role] = Event(currently_oncall[role].user_username,
+                                                   currently_oncall[role].team_slug,
+                                                   role,
+                                                   current_date)
+            current_date += ONE_DAY
+
+        for role, event in build_events.items():
+            db.session.add(event)
+        db.session.commit()
+
+    return Response('Yes')
 
 
 @app.route('/<team>/oncallOrder/<role>')
@@ -240,6 +280,7 @@ def get_oncall_order(team, role):
     oncall_order = OncallOrder.query.filter_by(team_slug=team,
                                                role=role) \
                                     .order_by(OncallOrder.order).all()
+
 
     team_members = Team.query.filter_by(slug=team).first() \
                              .users.order_by(User.username).all()

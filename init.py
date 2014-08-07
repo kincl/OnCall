@@ -60,6 +60,5 @@ db.session.add(OncallOrder(team1.slug, user2.username, "Secondary", 2))
 db.session.add(OncallOrder(team1.slug, user1.username, "Primary", 3))
 db.session.add(OncallOrder(team1.slug, user3.username, "Secondary", 3))
 
-db.session.add(Cron('test'))
 
 db.session.commit()
