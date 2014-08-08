@@ -252,6 +252,13 @@ $(document).ready(function() {
         $.each( data, function( key, val ) {
             teams.push([val['id'],val['name']]);
             global.team = val['id']; // JASON
+            $('.selected-team').html(val['name']);
+
+            $('.team-list').append($('<li/>')
+                                 .append($('<a/>')
+                                     .attr('onclick', "global.team='"+val['id']+"'; $('.selected-team').html('"+val['name']+"'); update_calendar_team()")
+                                     .attr('href', '#')
+                                     .html(val['name'])));
         });
         global.teams = teams;
         // $('.team_menu').append($('<select/>').

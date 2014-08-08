@@ -103,12 +103,9 @@ body {
           <li>
             <div class="btn btn-group">
               <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-               Team <span class="caret"></span>
+                <span class='selected-team'></span> <span class="caret"></span>
               </button>
-              <ul class="dropdown-menu" role="menu">
-                <li><a onclick="global.team='team-1'; update_calendar_team()" href="#">team-1</a></li>
-                <li><a onclick="global.team='team-2'; update_calendar_team()" href="#">team-2</a></li>
-              </ul>
+              <ul class="dropdown-menu team-list" role="menu"></ul>
             </div>
           </li>
 
