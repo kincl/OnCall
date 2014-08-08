@@ -107,6 +107,8 @@ def current_oncall():
     for team in Team.query.all():
         current_team = {}
         current_oncall[team.name] = current_team
+        for order in OncallOrder.query.filter_by(team_slug=team.slug, order=0):
+            current_team[order.role] = order.user
         for event in _get_events_for_dates(team.slug, date.today(), date.today()):
             current_team[event.role] = event.user
     return render_template('list.html', oncall=current_oncall, roles=ROLES)
@@ -207,23 +209,24 @@ def get_future_events(team):
                     # Build the long event
                     oncall_now = oncall_order.filter_by(order=current_order,
                                                         role=role).first()
-
-                    long_events[role] = dict(editable=False,
-                                             projection=True,
-                                             id='prediction_%s' % current_id,
-                                             start=deepcopy(current_date),
-                                             end=deepcopy(current_date),
-                                             role=role,
-                                             title=oncall_now.get_title(),
-                                             user_username=oncall_now.user_username)
-                    current_id += 1
+                    if oncall_now:
+                        long_events[role] = dict(editable=False,
+                                                 projection=True,
+                                                 id='prediction_%s' % current_id,
+                                                 start=deepcopy(current_date),
+                                                 end=deepcopy(current_date),
+                                                 role=role,
+                                                 title=oncall_now.get_title(),
+                                                 user_username=oncall_now.user_username)
+                        current_id += 1
 
         # stop all long running event builds because we are at the end of the week
         # TODO: am I sure that this mod 7 works right?
         if current_date.isoweekday() == ONCALL_START + 6 % 7:
             for role in ROLES:
                 _serialize_and_delete_role(future_events, long_events, role)
-            current_order = (current_order + 1) % max_oncall_order
+            if max_oncall_order > 0:
+                current_order = (current_order + 1) % max_oncall_order
         current_date += ONE_DAY
 
     return Response(json.dumps(future_events),

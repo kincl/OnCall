@@ -32,7 +32,7 @@ body {
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="#">Oncall Calendar</a>
+        <a class="navbar-brand" href="/">Oncall Calendar</a>
       </div>
     </div>
   </div>
@@ -54,7 +54,9 @@ body {
                 <h3 class="panel-title">{{ role }}</h3>
               </div>
               <div class="panel-body">
-{{ oncall_roles[role].name }}
+{% if oncall_roles.get(role, None) %}
+                {{ oncall_roles[role].name }}
+{% endif %}
               </div>
             </div>
 {% endfor %}

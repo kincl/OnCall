@@ -87,29 +87,31 @@ body {
           <span class="icon-bar"></span>
           <span class="icon-bar"></span>
         </button>
-        <a class="navbar-brand" href="#">Oncall Calendar</a>
+        <a class="navbar-brand" href="/">Oncall Calendar</a>
       </div>
       <div class="navbar-collapse collapse">
         <ul class="nav navbar-nav navbar-right">
 
-          <li><button onclick="open_oncall_order_dialog()" 
-                      class="btn btn-primary navbar-btn" 
-                      data-toggle="modal" 
-                      data-target="#oncallOrderModal"><span class="glyphicon glyphicon-sort"></span> Change Oncall Order</button></li>
-
           <li><a href="/list"><span class="glyphicon glyphicon-th-large"></span> Current Oncall List</a></li>
 
-          <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown">Team <span class="caret"></span></a>
-              <ul class="dropdown-menu" role="menu">
-                  <li><a onclick="global.team = 'team-1'; update_calendar_team()" href="#">team-1</a></li>
-                  <li><a onclick="global.team = 'team-2'; update_calendar_team()" href="#">team-2</a></li>
-              </ul>
-          </li>
+          <li><a href="#" onclick="open_oncall_order_dialog()">
+            <span class="glyphicon glyphicon-sort"></span> Change Oncall Order</a></li>
 
-          <li><a href="#">Settings</a></li>
           <li><a href="#">Profile</a></li>
           <li><a href="#">Help</a></li>
+
+          <li>
+            <div class="btn btn-group">
+              <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+               Team <span class="caret"></span>
+              </button>
+              <ul class="dropdown-menu" role="menu">
+                <li><a onclick="global.team='team-1'; update_calendar_team()" href="#">team-1</a></li>
+                <li><a onclick="global.team='team-2'; update_calendar_team()" href="#">team-2</a></li>
+              </ul>
+            </div>
+          </li>
+
         </ul>
       </div>
     </div>
@@ -144,17 +146,15 @@ body {
           <div class="row">
 
               <div class="col-md-5">
-                <ul id="primary_oncall" class="primarySortable"></ul>
-                <br/>
-                <ul id="primary_notoncall" class="primarySortable"></ul>
+                <ul id="primary_oncall" class="primarySortable"><br/></ul>
+                <ul id="primary_notoncall" class="primarySortable"><br/></ul>
               </div>
 
               <div class="col-md-1"></div>
 
               <div class="col-md-5">
-                <ul id="secondary_oncall" class="secondarySortable"></ul>
-                <br/>
-                <ul id="secondary_notoncall" class="secondarySortable"></ul>
+                <ul id="secondary_oncall" class="secondarySortable"><br/></ul>
+                <ul id="secondary_notoncall" class="secondarySortable"><br/></ul>
               </div>
           </div>
         </div>

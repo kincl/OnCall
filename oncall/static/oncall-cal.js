@@ -200,6 +200,8 @@ function open_oncall_order_dialog() {
     set_up_oncall_order('Secondary',
                         "#secondary_oncall",
                         "#secondary_notoncall");
+
+    $('#oncallOrderModal').modal('show');
 }
 
 // function get_param( name )
@@ -252,7 +254,7 @@ $(document).ready(function() {
             global.team = val['id']; // JASON
         });
         global.teams = teams;
-        // $('#team_select').append($('<select/>').
+        // $('.team_menu').append($('<select/>').
         //                     attr('id', 'team').
         //                     attr('onchange', 'update_calendar_team()').
         //                     append(make_select_options(teams, get_param('t'))))
