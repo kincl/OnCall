@@ -45,4 +45,4 @@ Event history
 - set up error handling
 - do auto population of team list
 - authentication
-- ldap integration
+- ldap integration for teams

@@ -38,8 +38,13 @@ body {
   </div>
   <div class="container-fluid">
 
-    <div class="row">
 {% for team, oncall_roles in oncall.items() %}
+{% if not loop.first and loop.index0 % 3 == 0 %}
+    </div>
+{% endif %}
+{% if loop.index0 % 3 == 0 %}
+    <div class="row">
+{% endif %}
       <div class="col-md-4">
         <div class="panel panel-default">
           <div class="panel-body">
@@ -63,6 +68,8 @@ body {
           </div>
         </div>
       </div>
-{% endfor %}
+{% if loop.last %}
     </div>
+{% endif %}
+{% endfor %}
   </div>
