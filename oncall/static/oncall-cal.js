@@ -204,18 +204,6 @@ function open_oncall_order_dialog() {
     $('#oncallOrderModal').modal('show');
 }
 
-// function get_param( name )
-// {
-//   name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
-//   var regexS = "[\\?&]"+name+"=([^&#]*)";
-//   var regex = new RegExp( regexS );
-//   var results = regex.exec( window.location.href );
-//   if( results === null )
-//     return null;
-//   else
-//     return results[1];
-// }
-
 $(document).ready(function() {
     $('#oncallOrderModal').on('hide.bs.modal', function (e) {
         update_calendar_team();
@@ -254,18 +242,14 @@ $(document).ready(function() {
             global.team = val['id']; // JASON
             $('.selected-team').html(val['name']);
 
+            var onclick = "global.team='"+val['id']+"'; $('.selected-team').html('"+val['name']+"'); update_calendar_team()";
             $('.team-list').append($('<li/>')
                                  .append($('<a/>')
-                                     .attr('onclick', "global.team='"+val['id']+"'; $('.selected-team').html('"+val['name']+"'); update_calendar_team()")
+                                     .attr('onclick', onclick)
                                      .attr('href', '#')
                                      .html(val['name'])));
         });
         global.teams = teams;
-        // $('.team_menu').append($('<select/>').
-        //                     attr('id', 'team').
-        //                     attr('onchange', 'update_calendar_team()').
-        //                     append(make_select_options(teams, get_param('t'))))
-        //                 .append($('<br/>'));
     });
 
     // get roles and add to global variable
