@@ -184,6 +184,9 @@ def get_future_events(team):
         delta = _get_monday(request_start) - _get_monday(date.today())
         current_order = delta.days / 7 % max_oncall_order
         current_date = _get_monday(request_start)
+    elif request_start < date.today() and request_end < date.today():
+        # Both request dates are in the past, so we are not predicting events
+        return Response([], mimetype='aplication/json')
     else:
         current_order = 0
         current_date = _get_monday(date.today())
@@ -241,6 +244,11 @@ def rotate_oncall():
     else:
         c.date_updated = date.today()
 
+    #print _get_monday(c.date_updated)
+    #print _get_monday(date.today())
+
+    #return Response('Stopped')
+
     for team in Team.query.all():
         currently_oncall = {}
         for role in ROLES:
@@ -270,10 +278,14 @@ def rotate_oncall():
                     if build_events.get(role, None):
                         build_events.get(role).end = deepcopy(current_date)
                     else:
-                        build_events[role] = Event(currently_oncall[role].user_username,
-                                                   currently_oncall[role].team_slug,
-                                                   role,
-                                                   current_date)
+                        try:
+                            build_events[role] = Event(currently_oncall[role].user_username,
+                                                       currently_oncall[role].team_slug,
+                                                       role,
+                                                       current_date)
+                        except KeyError:
+                            # we dont have a current oncall role
+                            pass
             current_date += ONE_DAY
 
         for role, event in build_events.items():
