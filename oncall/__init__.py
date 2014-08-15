@@ -430,7 +430,6 @@ def get_team_members(team):
 @app.route('/<team>/event', methods=['POST'])
 @login_required
 def create_event(team):
-    #team = request.form.get('team')
     if _can_add_event(team, request.form.get('start'), request.form.get('end')):
         events = _get_events_for_dates(team,
                                        request.form.get('start'),
