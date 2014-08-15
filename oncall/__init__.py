@@ -1,11 +1,20 @@
-from flask import Flask, request, render_template, abort, json, Response
+from flask import Flask, request, render_template, abort, json, Response, session, url_for, redirect, flash, get_flashed_messages
 from flask.ext.sqlalchemy import SQLAlchemy
 from jinja2 import TemplateNotFound
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from copy import deepcopy
+from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
+from urlparse import urlparse, urljoin
+from flask_wtf import Form 
+from wtforms import TextField, PasswordField, HiddenField
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+app.secret_key = 'test123'
+
+login_manager = LoginManager()
+login_manager.login_view = '/login'
+login_manager.init_app(app)
 
 db = SQLAlchemy(app)
 
@@ -20,6 +29,68 @@ ROLES = ['Primary',
 ONCALL_START = 1
 
 ONE_DAY = timedelta(1)
+
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and \
+           ref_url.netloc == test_url.netloc
+
+
+def get_redirect_target():
+    for target in request.args.get('next'), request.referrer:
+        if not target:
+            continue
+        if is_safe_url(target):
+            return target
+
+
+class RedirectForm(Form):
+    next = HiddenField()
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        if not self.next.data:
+            self.next.data = get_redirect_target() or ''
+
+    def redirect(self, endpoint='index', **values):
+        if is_safe_url(self.next.data):
+            return redirect(self.next.data)
+        target = get_redirect_target()
+        return redirect(target or url_for(endpoint, **values))
+
+
+class LoginForm(RedirectForm):
+    username = TextField('Username')
+    password = PasswordField('Password')
+
+
+@login_manager.user_loader
+def load_user(userid):
+    return User.query.filter_by(username=userid).first()
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form = LoginForm()
+    if form.validate_on_submit():
+        # login and validate the user...
+        user = User.query.filter_by(username=request.form.get('username')).first()
+        if user:
+            login_user(user)
+            flash('Logged in successfully.')
+            return redirect(request.args.get('next') or '/')
+        else:
+            flash('Invalid login.')
+    return render_template('login.html', form=form, flashes=get_flashed_messages())
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect('/login')
 
 
 def _str_to_date(date_str):
@@ -94,9 +165,10 @@ def _other_role(start_role):
 # TODO: FIX
 @app.route('/', defaults={'team': 'team-1'})
 @app.route('/<team>')
+@login_required
 def calendar(team):
     try:
-        return render_template('index.html')
+        return render_template('index.html', logged_in=current_user, flashes=get_flashed_messages())
     except TemplateNotFound:
         abort(404)
 
@@ -115,18 +187,21 @@ def current_oncall():
 
 
 @app.route('/roles')
+@login_required
 def get_roles():
     return Response(json.dumps(ROLES),
                     mimetype='application/json')
 
 
 @app.route('/teams')
+@login_required
 def get_teams():
     return Response(json.dumps([t.to_json() for t in Team.query.all()]),
                     mimetype='application/json')
 
 
 @app.route('/<team>/events')
+@login_required
 def get_events(team):
     #team = request.args.get('team')
     events = _get_events_for_dates(team,
@@ -163,6 +238,7 @@ def _filter_events_by_date(events, filter_date):
 
 
 @app.route('/<team>/predict_events')
+@login_required
 def get_future_events(team):
     """Build list of events that will occur based on current Oncall Order"""
     #team = request.args.get('team')
@@ -236,66 +312,69 @@ def get_future_events(team):
                     mimetype='application/json')
 
 
+@app.before_request
 @app.route('/oncallOrder/rotate')
 def rotate_oncall():
-    c = Cron.query.filter_by(name='oncall_rotate').first()
-    if c is None:
-        db.session.add(Cron('oncall_rotate'))
-    else:
-        c.date_updated = date.today()
+    if session['rotated'] < datetime.now() - timedelta(0, 60):
+        print 'checking rotation'
 
-    #print _get_monday(c.date_updated)
-    #print _get_monday(date.today())
+        session['rotated'] = datetime.now()
+        c = Cron.query.filter_by(name='oncall_rotate').first()
+        if c is None:
+            c = Cron('oncall_rotate')
+            db.session.add(c)
+            db.session.commit()
 
-    #return Response('Stopped')
+        if c.date_updated <= _get_monday(date.today()):
+            c.date_updated = date.today()
+            db.session.commit()
 
-    for team in Team.query.all():
-        currently_oncall = {}
-        for role in ROLES:
-            oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
-            for oo in oncall:
-                oo.order = (oo.order - 1) % len(oncall)
-                if oo.order == 0:
-                    currently_oncall[role] = oo
+            for team in Team.query.all():
+                currently_oncall = {}
+                for role in ROLES:
+                    oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
+                    for oo in oncall:
+                        oo.order = (oo.order - 1) % len(oncall)
+                        if oo.order == 0:
+                            currently_oncall[role] = oo
 
-        db.session.commit()
+                db.session.commit()
 
-        start_date = _get_monday(date.today())
-        end_date = start_date + timedelta(7)
-        real_events = _get_events_for_dates(team.slug, start_date, end_date)
-        current_date = start_date
-        build_events = {}
-        while current_date != end_date:
-            current_date_roles = []
-            for e in _filter_events_by_date(real_events, current_date):
-                current_date_roles.append(e.role)
-            for role in ROLES:
-                if role in current_date_roles:
-                    if build_events.get(role, None):
-                        db.session.add(build_events.get(role))
-                        del build_events[role]
-                else:
-                    if build_events.get(role, None):
-                        build_events.get(role).end = deepcopy(current_date)
-                    else:
-                        try:
-                            build_events[role] = Event(currently_oncall[role].user_username,
-                                                       currently_oncall[role].team_slug,
-                                                       role,
-                                                       current_date)
-                        except KeyError:
-                            # we dont have a current oncall role
-                            pass
-            current_date += ONE_DAY
+                start_date = _get_monday(date.today())
+                end_date = start_date + timedelta(7)
+                real_events = _get_events_for_dates(team.slug, start_date, end_date)
+                current_date = start_date
+                build_events = {}
+                while current_date != end_date:
+                    current_date_roles = []
+                    for e in _filter_events_by_date(real_events, current_date):
+                        current_date_roles.append(e.role)
+                    for role in ROLES:
+                        if role in current_date_roles:
+                            if build_events.get(role, None):
+                                db.session.add(build_events.get(role))
+                                del build_events[role]
+                        else:
+                            if build_events.get(role, None):
+                                build_events.get(role).end = deepcopy(current_date)
+                            else:
+                                try:
+                                    build_events[role] = Event(currently_oncall[role].user_username,
+                                                               currently_oncall[role].team_slug,
+                                                               role,
+                                                               current_date)
+                                except KeyError:
+                                    # we dont have a current oncall role
+                                    pass
+                    current_date += ONE_DAY
 
-        for role, event in build_events.items():
-            db.session.add(event)
-        db.session.commit()
-
-    return Response('Yes')
+                for role, event in build_events.items():
+                    db.session.add(event)
+                db.session.commit()
 
 
 @app.route('/<team>/oncallOrder/<role>')
+@login_required
 def get_oncall_order(team, role):
     # TODO: find who is not in the rotation and pass that list to client as well
     oncall_order = OncallOrder.query.filter_by(team_slug=team,
@@ -317,6 +396,7 @@ def get_oncall_order(team, role):
 
 
 @app.route('/<team>/oncallOrder', methods=['POST'])
+@login_required
 def update_oncall(team):
     for role in ROLES:
         order_list = OncallOrder.query.filter_by(team_slug=team,
@@ -336,6 +416,7 @@ def update_oncall(team):
 
 
 @app.route('/<team>/members')
+@login_required
 def get_team_members(team):
     members = []
     for u in Team.query.filter_by(slug=team).first() \
@@ -347,6 +428,7 @@ def get_team_members(team):
 
 
 @app.route('/<team>/event', methods=['POST'])
+@login_required
 def create_event(team):
     #team = request.form.get('team')
     if _can_add_event(team, request.form.get('start'), request.form.get('end')):
@@ -368,6 +450,7 @@ def create_event(team):
 
 
 @app.route('/<team>/event/<eventid>', methods=['POST'])
+@login_required
 def update_event(team, eventid):
     start = request.form.get('start')
     end = request.form.get('end') if request.form.get('end') \
@@ -409,6 +492,7 @@ def update_event(team, eventid):
 
 
 @app.route('/<team>/event/delete/<eventid>', methods=['POST'])
+@login_required
 def delete_event(team, eventid):
     e = Event.query.filter_by(id=eventid).first()
     db.session.delete(e)

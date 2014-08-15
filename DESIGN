@@ -41,8 +41,6 @@ Event history
 
 
 # TODO
-- set up pseudo cron for each page load
 - set up error handling
-- do auto population of team list
 - authentication
 - ldap integration for teams

@@ -29,6 +29,18 @@ class User(db.Model):
     def to_json(self):
         return dict(name=self.name, id=self.username)
 
+    def is_active(self):
+        return True
+
+    def is_authenticated(self):
+        return True
+
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        return unicode(self.username)
+
     def __eq__(self, other):
         return type(self) is type(other) and self.username == other.username
 

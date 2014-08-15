@@ -97,8 +97,7 @@ body {
           <li><a href="#" onclick="open_oncall_order_dialog()">
             <span class="glyphicon glyphicon-sort"></span> Change Oncall Order</a></li>
 
-          <li><a href="#">Profile</a></li>
-          <li><a href="#">Help</a></li>
+          <li><a href="#"><span class="glyphicon glyphicon-user"></span> {{ logged_in.name }}</a></li>
 
           <li>
             <div class="btn btn-group">
@@ -109,6 +108,9 @@ body {
             </div>
           </li>
 
+          <li><div class="btn btn-group"><a href="/logout"><button type="button" class="btn btn-danger"><span class="glyphicon glyphicon-log-out"></span> Log out</button></a></div></li>
+
+          <li><a href="#">Help</a></li>
         </ul>
       </div>
     </div>
@@ -116,7 +118,17 @@ body {
 
   <div class="container-fluid">
     <div class="row">
+      <div class="col-sm-9 col-md-10">
+        {% if flashes %}
+          {% for flash in flashes %}
+        <div class="alert alert-warning" role="alert">{{ flash }}</div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
 
+
+    <div class="row">
       <div class="col-sm-10 col-md-10 col-md-offset-0 main">
         <div id='loading' style='display:none'>loading...</div>
         <div id='calendar'></div>
