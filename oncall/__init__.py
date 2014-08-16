@@ -6,7 +6,7 @@ from copy import deepcopy
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from urlparse import urlparse, urljoin
 from flask_wtf import Form 
-from wtforms import TextField, PasswordField, HiddenField
+from wtforms import StringField, PasswordField, HiddenField
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -62,7 +62,7 @@ class RedirectForm(Form):
 
 
 class LoginForm(RedirectForm):
-    username = TextField('Username')
+    username = StringField('Username')
     password = PasswordField('Password')
 
 
@@ -78,11 +78,15 @@ def login():
         # login and validate the user...
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user:
-            login_user(user)
-            flash('Logged in successfully.')
-            return redirect(request.args.get('next') or '/')
+            if app.debug:
+                login_user(user)
+                flash('Logged in successfully.')
+                return redirect(request.args.get('next') or '/')
         else:
             flash('Invalid login.')
+    else:
+        if app.debug:
+            flash('Debug mode, password not checked.')
     return render_template('login.html', form=form, flashes=get_flashed_messages())
 
 

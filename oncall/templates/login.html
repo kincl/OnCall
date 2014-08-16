@@ -65,7 +65,7 @@ body {
       <div class="col-sm-5 col-md-4">
       <form class="form-signin" role="form" method="post">
         <h2 class="form-signin-heading">Please sign in</h2>
-        {{ form.username(size=20, class="form-control", placeholder="Username") }}
+        {{ form.username(size=20, required=True, autofocus=True, class="form-control", placeholder="Username") }}
         {{ form.password(size=20, class="form-control", placeholder="Password") }}
         {{ form.csrf_token }}
         <div class="checkbox">
