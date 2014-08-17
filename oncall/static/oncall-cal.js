@@ -204,6 +204,35 @@ function open_oncall_order_dialog() {
     $('#oncallOrderModal').modal('show');
 }
 
+function open_profile_dialog() {
+    $('#profileModal').modal('show');
+}
+
+function select_team(slug, update_calendar) {
+    // set default val
+    update_calendar =  typeof update_calendar !== 'undefined' ? update_calendar : true;
+
+    var team = false;
+    $.each( global.teams, function( key, val ) {
+        if (slug == val['id']) {
+            team = val;
+            return false; // break loop
+        }
+    });
+    if (team) {
+        global.team = team['id'];
+        $('.selected-team').html(team['name']);
+    }
+    else {
+        console.log('Error: team id did not work')
+    }
+
+    if (update_calendar) {
+        update_calendar_team();
+    }
+
+}
+
 $(document).ready(function() {
     $('#oncallOrderModal').on('hide.bs.modal', function (e) {
         update_calendar_team();
@@ -236,20 +265,24 @@ $(document).ready(function() {
 
     // get teams
     $.getJSON( "/teams", function( data ) {
-        var teams = [];
-        $.each( data, function( key, val ) {
-            teams.push([val['id'],val['name']]);
-            global.team = val['id']; // JASON
-            $('.selected-team').html(val['name']);
+        global.teams = [];
+        $.each( data['teams'], function( key, val ) {
+            global.teams.push(val);
 
-            var onclick = "global.team='"+val['id']+"'; $('.selected-team').html('"+val['name']+"'); update_calendar_team()";
+            if (data['primary'] === null) {
+                select_team(val['id'], false);
+            }
+            else {
+                select_team(data['primary'], false);
+            }
+
+            var onclick = "select_team('"+val['id']+"')";
             $('.team-list').append($('<li/>')
                                  .append($('<a/>')
                                      .attr('onclick', onclick)
                                      .attr('href', '#')
                                      .html(val['name'])));
         });
-        global.teams = teams;
     });
 
     // get roles and add to global variable

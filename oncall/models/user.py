@@ -10,6 +10,8 @@ class User(db.Model):
     __tablename__ = 'users'
     username = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
+    primary_team = db.Column(db.String(200), db.ForeignKey('teams.slug'))
+    contact_card = db.Column(db.Text())
     teams = db.relationship('Team',
                             secondary=teams, 
                             backref=db.backref('users', 

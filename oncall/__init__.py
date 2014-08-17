@@ -200,7 +200,8 @@ def get_roles():
 @app.route('/teams')
 @login_required
 def get_teams():
-    return Response(json.dumps([t.to_json() for t in Team.query.all()]),
+    return Response(json.dumps({'primary': current_user.primary_team,
+                                'teams': [t.to_json() for t in Team.query.all()]}),
                     mimetype='application/json')
 
 
