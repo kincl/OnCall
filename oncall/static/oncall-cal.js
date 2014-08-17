@@ -214,6 +214,7 @@ function open_oncall_order_dialog() {
 }
 
 function open_profile_dialog() {
+    // TODO: Update data then show modal
     $('#profileModal').modal('show');
 }
 
@@ -245,6 +246,7 @@ function select_team(slug, update_calendar) {
 
 function get_flashes() {
     // get flashes and put in #flash-drawer
+    $('#flash-drawer').html('');
     $.getJSON( "/user/getFlashes", function( data ) {
         $.each(data, function( key, val ) {
             var category = val[0] == 'message' ? 'info' :  val[0];
@@ -416,7 +418,6 @@ $(document).ready(function() {
             data: $form.serialize(),
 
             success: function(data, status) {
-                //$target.html(data);
                 $('#profileModal').modal('hide');
                 get_flashes();
 

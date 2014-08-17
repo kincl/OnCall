@@ -7,7 +7,7 @@ from oncall.models import OncallOrder
 
 from datetime import date
 
-db.create_all()
+#db.create_all()
 
 team1 = Team('Team 1')
 team2 = Team('Team 2')

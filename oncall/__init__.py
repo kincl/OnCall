@@ -166,8 +166,7 @@ def _other_role(start_role):
 
 
 class UpdateProfileForm(Form):
-    primary_team = SelectField('Primary Team',
-                               choices=[(t.slug, t.name) for t in Team.query.all()])
+    primary_team = SelectField('Primary Team')
     contact_card = TextAreaField('Contact Card')
 
 
@@ -178,6 +177,7 @@ class UpdateProfileForm(Form):
 def calendar(team):
     profile_form = UpdateProfileForm()
 
+    profile_form.primary_team.choices = [(t.slug, t.name) for t in Team.query.all()]
     profile_form.primary_team.data = current_user.primary_team
     profile_form.contact_card.data = current_user.contact_card
 
@@ -189,7 +189,7 @@ def calendar(team):
 
 @app.route('/user/getFlashes')
 @login_required
-def user_get_flahes():
+def user_get_flashes():
     return Response(json.dumps(get_flashed_messages(with_categories=True)),
                         mimetype='application/json')
 
@@ -198,6 +198,8 @@ def user_get_flahes():
 @login_required
 def user_update_prefs():
     form = UpdateProfileForm()
+    form.primary_team.choices = [(t.slug, t.name) for t in Team.query.all()]
+
     if form.validate_on_submit():
         current_user.primary_team = request.form.get('primary_team')
         current_user.contact_card = request.form.get('contact_card')

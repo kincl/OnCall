@@ -65,8 +65,10 @@ body {
               </div>
               <div class="panel-body">
 {% if oncall_roles.get(role, None) %}
-                <h5>{{ oncall_roles[role].name }}</h5>
-                <pre>{{ oncall_roles[role].contact_card }}</pre>
+                <strong>{{ oncall_roles[role].name }}</strong>
+{% for line in oncall_roles[role].contact_card.split('\n') %}
+                <br/>{{ line }}
+{% endfor %}
 {% endif %}
               </div>
             </div>

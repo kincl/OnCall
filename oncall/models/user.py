@@ -26,7 +26,8 @@ class User(db.Model):
     def __init__(self, username, name, team_slug = None):
         self.username = username
         self.name = name
-        self.teams.append(Team.query.filter_by(slug = team_slug).first()) 
+        self.teams.append(Team.query.filter_by(slug = team_slug).first())
+        self.contact_card = ''
 
     def to_json(self):
         return dict(name=self.name, id=self.username)
