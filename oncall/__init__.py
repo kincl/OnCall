@@ -1,12 +1,11 @@
-from flask import Flask, request, render_template, abort, json, Response, session, url_for, redirect, flash, get_flashed_messages
+from flask import Flask, request, render_template, json, Response, session, url_for, redirect, flash, get_flashed_messages
 from flask.ext.sqlalchemy import SQLAlchemy
-from jinja2 import TemplateNotFound
 from datetime import date, timedelta, datetime
 from copy import deepcopy
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from urlparse import urlparse, urljoin
 from flask_wtf import Form 
-from wtforms import StringField, PasswordField, HiddenField
+from wtforms import StringField, PasswordField, HiddenField, SelectField, TextAreaField
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -80,13 +79,13 @@ def login():
         if user:
             if app.debug:
                 login_user(user)
-                flash('Logged in successfully.')
+                flash('Logged in successfully', 'success')
                 return redirect(request.args.get('next') or '/')
         else:
-            flash('Invalid login.')
+            flash('Invalid login', 'error')
     else:
         if app.debug:
-            flash('Debug mode, password not checked.')
+            flash('Debug mode, password not checked')
     return render_template('login.html', form=form, flashes=get_flashed_messages())
 
 
@@ -166,15 +165,46 @@ def _other_role(start_role):
             return role
 
 
+class UpdateProfileForm(Form):
+    primary_team = SelectField('Primary Team',
+                               choices=[(t.slug, t.name) for t in Team.query.all()])
+    contact_card = TextAreaField('Contact Card')
+
+
 # TODO: FIX
 @app.route('/', defaults={'team': 'team-1'})
 @app.route('/<team>')
 @login_required
 def calendar(team):
-    try:
-        return render_template('index.html', logged_in=current_user, flashes=get_flashed_messages())
-    except TemplateNotFound:
-        abort(404)
+    profile_form = UpdateProfileForm()
+
+    profile_form.primary_team.data = current_user.primary_team
+    profile_form.contact_card.data = current_user.contact_card
+
+    return render_template('index.html',
+                           selected_team=team,
+                           profile_form=profile_form,
+                           logged_in=current_user)
+
+
+@app.route('/user/getFlashes')
+@login_required
+def user_get_flahes():
+    return Response(json.dumps(get_flashed_messages(with_categories=True)),
+                        mimetype='application/json')
+
+
+@app.route('/user/updatePrefs', methods=['POST'])
+@login_required
+def user_update_prefs():
+    form = UpdateProfileForm()
+    if form.validate_on_submit():
+        current_user.primary_team = request.form.get('primary_team')
+        current_user.contact_card = request.form.get('contact_card')
+        db.session.commit()
+        flash('Updated profile')
+        return Response(json.dumps({'result': 'success'}),
+                        mimetype='application/json')
 
 
 @app.route('/list')
@@ -416,6 +446,7 @@ def update_oncall(team):
             order_num += 1
 
     db.session.commit()
+    flash('Updated oncall rotation')
     return Response(json.dumps({'result': 'success'}),
                     mimetype='application/json')
 

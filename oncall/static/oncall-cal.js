@@ -45,9 +45,18 @@ function updateOncall() {
 
     $('ul#primary_oncall li').each(function(k, v) { primary.push($(v).attr('id')); });
     $('ul#secondary_oncall li').each(function(k, v) { secondary.push($(v).attr('id')); });
-    $.post('/'+global.team+'/oncallOrder',
-           {'Primary': primary,
-            'Secondary': secondary});
+    $.ajax({
+        type: 'post',
+        url: '/'+global.team+'/oncallOrder',
+        data: {'Primary': primary,
+               'Secondary': secondary},
+
+        success: function(data, status) {
+            $('#oncallOrderModal').modal('hide');
+            get_flashes();
+        }
+    });
+
 }
 
 /* Can handle either a array of values or
@@ -224,7 +233,7 @@ function select_team(slug, update_calendar) {
         $('.selected-team').html(team['name']);
     }
     else {
-        console.log('Error: team id did not work')
+        console.log('Error: team id did not work');
     }
 
     if (update_calendar) {
@@ -232,6 +241,25 @@ function select_team(slug, update_calendar) {
     }
 
 }
+
+
+function get_flashes() {
+    // get flashes and put in #flash-drawer
+    $.getJSON( "/user/getFlashes", function( data ) {
+        $.each(data, function( key, val ) {
+            var category = val[0] == 'message' ? 'info' :  val[0];
+            var message = val[1];
+            var alert = $('<div data-dismiss="alert" role="alert"/>')
+                .attr('class', 'alert alert-'+category+' alert-dismissible')
+                .append($('<button type="button" class="close"/>')
+                    .html('<span aria-hidden="true">&times;</span><span class="sr-only">Close</span>'))
+                .append(message);
+
+            $('#flash-drawer').append(alert);
+        });
+    });
+}
+
 
 $(document).ready(function() {
     $('#oncallOrderModal').on('hide.bs.modal', function (e) {
@@ -377,4 +405,26 @@ $(document).ready(function() {
     //     },
     // };
     // $('#calendar').fullCalendar( 'addEventSource', google_cal);
+
+    $('form[data-async]').on('submit', function(event) {
+        var $form = $(this);
+        var $target = $($form.attr('data-target'));
+
+        $.ajax({
+            type: $form.attr('method'),
+            url: $form.attr('action'),
+            data: $form.serialize(),
+
+            success: function(data, status) {
+                //$target.html(data);
+                $('#profileModal').modal('hide');
+                get_flashes();
+
+            }
+        });
+
+        event.preventDefault();
+    });
+
+    get_flashes();
 });

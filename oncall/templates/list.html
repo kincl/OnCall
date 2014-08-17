@@ -61,11 +61,12 @@ body {
             <div class="panel panel-warning">
 {% endif %}
               <div class="panel-heading">
-                <h3 class="panel-title">{{ role }}</h3>
+                <h2 class="panel-title">{{ role }}</h2>
               </div>
               <div class="panel-body">
 {% if oncall_roles.get(role, None) %}
-                {{ oncall_roles[role].name }}
+                <h5>{{ oncall_roles[role].name }}</h5>
+                <pre>{{ oncall_roles[role].contact_card }}</pre>
 {% endif %}
               </div>
             </div>
