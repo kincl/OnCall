@@ -11,22 +11,16 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.secret_key = 'test123'
 
+db = SQLAlchemy(app)
+from oncall.models import Event, User, Team, OncallOrder, Cron
+
 login_manager = LoginManager()
 login_manager.login_view = '/login'
 login_manager.init_app(app)
 
-db = SQLAlchemy(app)
-
-from oncall.models import Event
-from oncall.models import User
-from oncall.models import Team
-from oncall.models import OncallOrder
-from oncall.models import Cron
-
 ROLES = ['Primary',
          'Secondary']
 ONCALL_START = 1
-
 ONE_DAY = timedelta(1)
 
 
