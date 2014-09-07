@@ -48,8 +48,6 @@ db.session.add(User('user22', 'Return Spring', team2.slug))
 db.session.add(User('user23', 'Sneaker Net', team2.slug))
 db.session.add(User('user24', 'Short Sheet', team2.slug))
 db.session.add(User('user25', 'Seagull Faro', team2.slug))
-db.session.add(Event(jkincl.username, team1.slug, "Primary", date(2014,05,12)))
-db.session.add(Event(jkincl.username, team1.slug, "Primary", date(2014,05,13), date(2014,05,14)))
 
 db.session.add(OncallOrder(team1.slug, jkincl.username, "Primary", 0))
 db.session.add(OncallOrder(team1.slug, user1.username, "Secondary", 0))

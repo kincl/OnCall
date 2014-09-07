@@ -1,11 +1,11 @@
-from flask import Flask, request, render_template, json, Response, session, url_for, redirect, flash, get_flashed_messages
+from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages
+from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
+
 from datetime import date, timedelta, datetime
 from copy import deepcopy
-from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
-from urlparse import urlparse, urljoin
-from flask_wtf import Form 
-from wtforms import StringField, PasswordField, HiddenField, SelectField, TextAreaField
+
+from forms import LoginForm, UpdateProfileForm
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -22,41 +22,6 @@ ROLES = ['Primary',
          'Secondary']
 ONCALL_START = 1
 ONE_DAY = timedelta(1)
-
-
-def is_safe_url(target):
-    ref_url = urlparse(request.host_url)
-    test_url = urlparse(urljoin(request.host_url, target))
-    return test_url.scheme in ('http', 'https') and \
-           ref_url.netloc == test_url.netloc
-
-
-def get_redirect_target():
-    for target in request.args.get('next'), request.referrer:
-        if not target:
-            continue
-        if is_safe_url(target):
-            return target
-
-
-class RedirectForm(Form):
-    next = HiddenField()
-
-    def __init__(self, *args, **kwargs):
-        Form.__init__(self, *args, **kwargs)
-        if not self.next.data:
-            self.next.data = get_redirect_target() or ''
-
-    def redirect(self, endpoint='index', **values):
-        if is_safe_url(self.next.data):
-            return redirect(self.next.data)
-        target = get_redirect_target()
-        return redirect(target or url_for(endpoint, **values))
-
-
-class LoginForm(RedirectForm):
-    username = StringField('Username')
-    password = PasswordField('Password')
 
 
 @login_manager.user_loader
@@ -157,11 +122,6 @@ def _other_role(start_role):
     for role in ROLES:
         if role != start_role:
             return role
-
-
-class UpdateProfileForm(Form):
-    primary_team = SelectField('Primary Team')
-    contact_card = TextAreaField('Contact Card')
 
 
 # TODO: FIX
@@ -347,7 +307,7 @@ def get_future_events(team):
 @app.route('/oncallOrder/rotate')
 def rotate_oncall():
     if session['rotated'] < datetime.now() - timedelta(0, 60):
-        print 'checking rotation'
+        app.logger.info('checking rotation')
 
         session['rotated'] = datetime.now()
         c = Cron.query.filter_by(name='oncall_rotate').first()
