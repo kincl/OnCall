@@ -7,9 +7,12 @@ from copy import deepcopy
 
 from forms import LoginForm, UpdateProfileForm
 
+import os
+
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
-app.secret_key = 'test123'
+app.config.from_object('oncall.settings')
+if 'ONCALLAPP_SETTINGS' in os.environ:
+    app.config.from_envvar('ONCALLAPP_SETTINGS')
 
 db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, OncallOrder, Cron
@@ -306,7 +309,7 @@ def get_future_events(team):
 @app.before_request
 @app.route('/oncallOrder/rotate')
 def rotate_oncall():
-    if session['rotated'] < datetime.now() - timedelta(0, 60):
+    if session['rotated'] < datetime.now() - timedelta(0, 10):
         app.logger.info('checking rotation')
 
         session['rotated'] = datetime.now()
@@ -316,7 +319,8 @@ def rotate_oncall():
             db.session.add(c)
             db.session.commit()
 
-        if c.date_updated <= _get_monday(date.today()):
+        if c.date_updated < _get_monday(date.today()):
+            app.logger.info('Rotating on call')
             c.date_updated = date.today()
             db.session.commit()
 
