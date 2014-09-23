@@ -17,14 +17,14 @@ if 'ONCALLAPP_SETTINGS' in os.environ:
 db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, OncallOrder, Cron
 
-login_manager = LoginManager()
-login_manager.login_view = '/login'
-login_manager.init_app(app)
-
 ROLES = ['Primary',
          'Secondary']
 ONCALL_START = 1
 ONE_DAY = timedelta(1)
+
+login_manager = LoginManager()
+login_manager.login_view = '/login'
+login_manager.init_app(app)
 
 
 @login_manager.user_loader
