@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.simpleldap import LDAP
 
 from datetime import date, timedelta, datetime
 from copy import deepcopy
@@ -26,6 +27,7 @@ login_manager = LoginManager()
 login_manager.login_view = '/login'
 login_manager.init_app(app)
 
+ldap = LDAP(app)
 
 @login_manager.user_loader
 def load_user(userid):
@@ -37,12 +39,18 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         # login and validate the user...
+        password_bind = None
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user:
             if app.debug:
-                login_user(user)
-                flash('Logged in successfully', 'success')
-                return redirect(request.args.get('next') or '/')
+                password_bind = True
+            else:
+                password_bind = ldap.bind_user(request.form.get('username'),
+                                               request.form.get('password'))
+        if password_bind:
+            login_user(user)
+            flash('Logged in successfully', 'success')
+            return redirect(request.args.get('next') or '/')
         else:
             flash('Invalid login', 'error')
     else:
