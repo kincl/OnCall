@@ -60,12 +60,13 @@ def login():
             try:
                 conn = ldap.initialize('{0}://{1}:{2}'.format(
                 'ldap',
-                '127.0.0.1',
-                '389'))
+                app.config['LDAP_HOST'],
+                app.config['LDAP_PORT']))
                 conn.protocol_version = ldap.VERSION3
 
                 password_bind = conn.simple_bind_s(
-                                    'uid={0},ou=People,dc=my-domain,dc=com'.format(request.form.get('username')),
+                                    'uid={0},{1}'.format(request.form.get('username'),
+                                                         app.config['LDAP_BASE_DN']),
                                     request.form.get('password'))
             except ldap.LDAPError as e:
                 flash('LDAP error {0}'.format(e), 'error')
@@ -78,7 +79,7 @@ def login():
             flash('Invalid login', 'error')
     else:
         if app.debug:
-            flash('Debug mode, password not checked')
+            flash('Debug mode')
     return render_template('login.html', form=form, flashes=get_flashed_messages())
 
 
@@ -159,8 +160,8 @@ def _other_role(start_role):
 
 
 # TODO: FIX
-@app.route('/', defaults={'team': 'team-1'})
-@app.route('/<team>')
+@app.route('/calendar', defaults={'team': 'team-1'})
+@app.route('/calendar/<team>')
 @login_required
 def calendar(team):
     profile_form = UpdateProfileForm()
@@ -169,10 +170,23 @@ def calendar(team):
     profile_form.primary_team.data = current_user.primary_team
     profile_form.contact_card.data = current_user.contact_card
 
-    return render_template('index.html',
+    return render_template('calendar.html',
                            selected_team=team,
                            profile_form=profile_form,
                            logged_in=current_user)
+
+
+@app.route('/')
+def current_oncall():
+    current_oncall = {}
+    for team in Team.query.all():
+        current_team = {}
+        current_oncall[team.name] = current_team
+        for order in OncallOrder.query.filter_by(team_slug=team.slug, order=0):
+            current_team[order.role] = order.user
+        for event in _get_events_for_dates(team.slug, date.today(), date.today()):
+            current_team[event.role] = event.user
+    return render_template('list.html', oncall=current_oncall, roles=ROLES)
 
 
 @app.route('/user/getFlashes')
@@ -195,19 +209,6 @@ def user_update_prefs():
         flash('Updated profile')
         return Response(json.dumps({'result': 'success'}),
                         mimetype='application/json')
-
-
-@app.route('/list')
-def current_oncall():
-    current_oncall = {}
-    for team in Team.query.all():
-        current_team = {}
-        current_oncall[team.name] = current_team
-        for order in OncallOrder.query.filter_by(team_slug=team.slug, order=0):
-            current_team[order.role] = order.user
-        for event in _get_events_for_dates(team.slug, date.today(), date.today()):
-            current_team[event.role] = event.user
-    return render_template('list.html', oncall=current_oncall, roles=ROLES)
 
 
 @app.route('/roles')
