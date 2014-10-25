@@ -43,8 +43,8 @@ function updateOncall() {
     var secondary = [];
     //var team_id = $('select#team option:selected').attr('id');
 
-    $('ul#primary_oncall li').each(function(k, v) { primary.push($(v).attr('id')); });
-    $('ul#secondary_oncall li').each(function(k, v) { secondary.push($(v).attr('id')); });
+    $('ul#primary_oncall li:not(.team_member_placeholder)').each(function(k, v) { primary.push($(v).attr('id')); });
+    $('ul#secondary_oncall li:not(.team_member_placeholder)').each(function(k, v) { secondary.push($(v).attr('id')); });
     $.ajax({
         type: 'post',
         url: '/'+global.team+'/oncallOrder',
@@ -125,7 +125,7 @@ function update_calendar_team() {
             global.team_members = team;
         });
 
-        // remove old event source and add the current one, this causes a refetch 
+        // remove old event source and add the current one, this causes a refetch
         // of events
         $('#calendar').fullCalendar( 'removeEventSource',global.event_source);
         $('#calendar').fullCalendar( 'removeEventSource',global.predict_event_source);
@@ -176,6 +176,10 @@ function set_up_oncall_order(role, oncall_html, notoncall_html) {
             $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
             team.push([val['user']['id'],val['user']['name']]);
         });
+        oncall.push($("<li/>", {
+                       "class": "team_member_placeholder",
+                       text: "+"
+                      }));
         $.each( data['not_oncall'], function( key, val ) {
             var background = get_color(val['id']);
             var member = $("<li/>", {
@@ -194,11 +198,14 @@ function set_up_oncall_order(role, oncall_html, notoncall_html) {
 
     $(oncall_html).sortable({
       connectWith: notoncall_html,
-      placeholder: "ui-state-highlight"
+      placeholder: "ui-state-highlight",
+      items: "li:not(.team_member_placeholder)",
+      containment: $(oncall_html).parent()
     }).disableSelection();
     $(notoncall_html).sortable({
       connectWith: oncall_html,
-      placeholder: "ui-state-highlight"
+      placeholder: "ui-state-highlight",
+      containment: $(notoncall_html).parent()
     }).disableSelection();
 }
 
@@ -326,7 +333,7 @@ $(document).ready(function() {
         editable: true,
         droppable: true,
         eventSources: [],
-        
+
         eventDrop: updateAndRefetch,
 
         eventResize: updateAndRefetch,
@@ -338,7 +345,7 @@ $(document).ready(function() {
 
             $('#calendar').fullCalendar('refetchEvents');
         },
-        
+
         loading: function(bool) {
             if (bool) $('#loading').show();
             else $('#loading').hide();

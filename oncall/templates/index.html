@@ -34,7 +34,7 @@ body {
 }
 
 #team_select {
-  padding-bottom: 10px; 
+  padding-bottom: 10px;
 }
 
 .team_member { /* try to mimick the look of a real event */
@@ -44,6 +44,15 @@ body {
   color: #fff;
   font-size: .85em;
   cursor: pointer;
+}
+
+.team_member_placeholder {
+  margin: 10px 0;
+  padding: 2px 4px;
+  height: 1.5em;
+  line-height: 1em;
+  text-align: center;
+  border: dotted 2px;
 }
 
 #loading {
@@ -64,11 +73,12 @@ body {
   border: solid 2px #000;
 }
 
-.primarySortable, .secondarySortable { 
+.primarySortable, .secondarySortable {
   list-style-type: none;
+  padding-left: 0px;
 }
 
-.ui-state-highlight { 
+.ui-state-highlight {
   height: 1.5em;
   line-height: 1.2em;
 }
@@ -146,17 +156,19 @@ body {
         </div>
         <div class="modal-body">
           <div class="row">
-              <div class="col-md-5">
+              <div class="col-md-1"></div>
+              <div class="col-md-4 primary_row">
                 <ul id="primary_oncall" class="primarySortable"><br/></ul>
                 <ul id="primary_notoncall" class="primarySortable"><br/></ul>
               </div>
 
-              <div class="col-md-1"></div>
+              <div class="col-md-2"></div>
 
-              <div class="col-md-5">
+              <div class="col-md-4 secondary_row">
                 <ul id="secondary_oncall" class="secondarySortable"><br/></ul>
                 <ul id="secondary_notoncall" class="secondarySortable"><br/></ul>
               </div>
+              <div class="col-md-1"></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -206,7 +218,6 @@ body {
   </div>
 
 <br/>
-<script src='{{ url_for('static', filename='oncall-cal.js') }}'></script> 
+<script src='{{ url_for('static', filename='oncall-cal.js') }}'></script>
 </body>
 </html>
-

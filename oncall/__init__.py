@@ -29,8 +29,6 @@ login_manager = LoginManager()
 login_manager.login_view = '/login'
 login_manager.init_app(app)
 
-#ldap = LDAP(app)
-
 
 @login_manager.user_loader
 def load_user(userid):
@@ -58,9 +56,6 @@ def login():
         if user:
             # if app.debug:
             #     password_bind = True
-            # else:
-            # password_bind = ldap.bind_user(request.form.get('username'),
-            #                                    request.form.get('password'))
 
             try:
                 conn = ldap.initialize('{0}://{1}:{2}'.format(
@@ -346,7 +341,8 @@ def get_future_events(team):
 @app.route('/oncallOrder/rotate')
 def rotate_oncall():
     # TODO: Allow for changes to this time limit
-    if session.get('rotated', datetime.now()) < datetime.now() - timedelta(0, 60):
+    if session.get('rotated', None) == None or \
+       session.get('rotated') < datetime.now() - timedelta(0, 60):
         app.logger.info('checking rotation')
 
         session['rotated'] = datetime.now()
@@ -403,6 +399,8 @@ def rotate_oncall():
                 for role, event in build_events.items():
                     db.session.add(event)
                 db.session.commit()
+    else:
+        session['rotated'] = datetime.now()
 
 
 @app.route('/<team>/oncallOrder/<role>')
