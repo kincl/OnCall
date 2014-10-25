@@ -1,7 +1,9 @@
 from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
+
 from flask.ext.simpleldap import LDAP
+import ldap
 
 from datetime import date, timedelta, datetime
 from copy import deepcopy
@@ -27,11 +29,23 @@ login_manager = LoginManager()
 login_manager.login_view = '/login'
 login_manager.init_app(app)
 
-ldap = LDAP(app)
+#ldap = LDAP(app)
+
 
 @login_manager.user_loader
 def load_user(userid):
     return User.query.filter_by(username=userid).first()
+
+
+@app.after_request
+def add_header(response):
+    """
+    Do not cache the page
+    """
+    response.headers['Cache-Control'] = 'no-cache, no-store, max-age=0, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = 'Fri, 01 Jan 1990 00:00:00 GMT'
+    return response
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -42,11 +56,25 @@ def login():
         password_bind = None
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user:
-            if app.debug:
-                password_bind = True
-            else:
-                password_bind = ldap.bind_user(request.form.get('username'),
-                                               request.form.get('password'))
+            # if app.debug:
+            #     password_bind = True
+            # else:
+            # password_bind = ldap.bind_user(request.form.get('username'),
+            #                                    request.form.get('password'))
+
+            try:
+                conn = ldap.initialize('{0}://{1}:{2}'.format(
+                'ldap',
+                '127.0.0.1',
+                '389'))
+                conn.protocol_version = ldap.VERSION3
+
+                password_bind = conn.simple_bind_s(
+                                    'uid={0},ou=People,dc=my-domain,dc=com'.format(request.form.get('username')),
+                                    request.form.get('password'))
+            except ldap.LDAPError as e:
+                flash('LDAP error {0}'.format(e), 'error')
+
         if password_bind:
             login_user(user)
             flash('Logged in successfully', 'success')
@@ -317,7 +345,8 @@ def get_future_events(team):
 @app.before_request
 @app.route('/oncallOrder/rotate')
 def rotate_oncall():
-    if session['rotated'] < datetime.now() - timedelta(0, 10):
+    # TODO: Allow for changes to this time limit
+    if session.get('rotated', datetime.now()) < datetime.now() - timedelta(0, 60):
         app.logger.info('checking rotation')
 
         session['rotated'] = datetime.now()
