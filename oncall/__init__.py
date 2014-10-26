@@ -192,6 +192,9 @@ def current_oncall():
     return render_template('list.html', oncall=current_oncall, roles=ROLES)
 
 
+# TODO: Add endpoints to get who is oncall right now
+
+
 @app.route('/user/getFlashes')
 @login_required
 def user_get_flashes():

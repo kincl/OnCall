@@ -8,6 +8,8 @@ class OncallOrder(db.Model):
     role = db.Column(db.String(200), primary_key=True)
     user_username = db.Column(db.String(200), db.ForeignKey('users.username'), primary_key=True)
 
+    _hide_command = []
+
     def __init__(self, team, user, role, order):
         self.team_slug = team
         self.user_username = user

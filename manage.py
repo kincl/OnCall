@@ -17,11 +17,17 @@ def init_db():
 
 
 class CRUD(Command):
-    def __init__(self, model):
+    def __init__(self, model, choices=['create', 'update', 'delete', 'list', 'debug']):
         self.model = model
+        self.choices = choices
+        self.attributes = []
+        for k,v in self.model.__dict__.items():
+            if isinstance(v, InstrumentedAttribute) and \
+               k not in self.model._hide_command:
+                self.attributes.append(k)
 
     def get_options(self):
-        opts = [Option('action', choices=['create', 'update', 'delete', 'list', 'debug'], help="Action to take")]
+        opts = [Option('action', choices=self.choices, help="Action to take")]
 
         # get all of the table columns and add them as options
         for c in self.model.__table__.columns:
@@ -58,16 +64,18 @@ class CRUD(Command):
         # TODO: updating single entries is easy, need to handle things like user.teams
         print options
 
-    def list(self):
-        col = self.model.__table__.columns
-        for c in col:
-            print c.key,
-        print
 
+    def list(self):
+        from tabulate import tabulate
+
+        table = []
         for t in self.model.query.all():
-            for c in col:
-                print getattr(t, c.key),
-            print
+            row = []
+            for c in self.attributes:
+                row.append(getattr(t, c))
+            table.append(row)
+
+        print tabulate(table, self.attributes, tablefmt='simple')
 
     def debug(self):
         print self.model._hide_command
@@ -91,6 +99,8 @@ class CRUD(Command):
 
 manager.add_command('user', CRUD(User))
 manager.add_command('team', CRUD(Team))
+manager.add_command('event', CRUD(Event, ['list']))
+manager.add_command('oncallorder', CRUD(OncallOrder, ['list']))
 
 
 if __name__ == "__main__":

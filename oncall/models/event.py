@@ -9,6 +9,8 @@ class Event(db.Model):
     start = db.Column(db.Date)
     end = db.Column(db.Date)
 
+    _hide_command = []
+
     def __init__(self, user_username, team_slug, role, start, end = None):
         self.user_username = user_username
         self.team_slug = team_slug
