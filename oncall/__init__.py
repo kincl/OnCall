@@ -168,8 +168,10 @@ def calendar(team):
     profile_form = UpdateProfileForm()
 
     profile_form.primary_team.choices = [(t.slug, t.name) for t in Team.query.all()]
+    profile_form.teams.choices = [(t.slug, t.name) for t in Team.query.all()]
     profile_form.primary_team.data = current_user.primary_team
     profile_form.contact_card.data = current_user.contact_card
+    profile_form.teams.data = [team.slug for team in current_user.teams]
 
     return render_template('calendar.html',
                            selected_team=team,
@@ -202,10 +204,12 @@ def user_get_flashes():
 def user_update_prefs():
     form = UpdateProfileForm()
     form.primary_team.choices = [(t.slug, t.name) for t in Team.query.all()]
+    form.teams.choices = [(t.slug, t.name) for t in Team.query.all()]
 
     if form.validate_on_submit():
         current_user.primary_team = request.form.get('primary_team')
         current_user.contact_card = request.form.get('contact_card')
+        current_user.set_teams(request.form.getlist('teams'))
         db.session.commit()
         flash('Updated profile')
         return Response(json.dumps({'result': 'success'}),

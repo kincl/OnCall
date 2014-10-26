@@ -1,7 +1,7 @@
 from oncall import db
 from team import Team
 
-teams = db.Table('users_to_teams', 
+teams = db.Table('users_to_teams',
     db.Column('user_username', db.String(200), db.ForeignKey('users.username')),
     db.Column('team_slug', db.String(200), db.ForeignKey('teams.slug'))
 )
@@ -13,21 +13,40 @@ class User(db.Model):
     primary_team = db.Column(db.String(200), db.ForeignKey('teams.slug'))
     contact_card = db.Column(db.Text())
     teams = db.relationship('Team',
-                            secondary=teams, 
-                            backref=db.backref('users', 
+                            secondary=teams,
+                            backref=db.backref('users',
                                                lazy='dynamic'))
-    events = db.relationship('Event', 
+    events = db.relationship('Event',
                              backref='user',
                              lazy='dynamic')
-    oncallorder = db.relationship('OncallOrder', 
+    oncallorder = db.relationship('OncallOrder',
                                   backref='user',
                                   lazy='dynamic')
 
+    _hide_command = ['events', 'oncallorder']
+
     def __init__(self, username, name, team_slug = None):
+        '''
+        username - username
+        name - name
+        team_slug - primary team
+        '''
         self.username = username
         self.name = name
-        self.teams.append(Team.query.filter_by(slug = team_slug).first())
+        self.set_teams(team_slug)
+        self.primary_team = team_slug
         self.contact_card = ''
+
+    # TODO: Need to decide how to handle appends and single deletes?
+    def set_teams(self, teams):
+        new_teams = []
+        # TODO: HAX?
+        if isinstance(teams, str):
+            teams = [teams]
+
+        for team in teams:
+            new_teams.append(Team.query.filter_by(slug = team).first())
+        self.teams = new_teams
 
     def to_json(self):
         return dict(name=self.name, id=self.username)

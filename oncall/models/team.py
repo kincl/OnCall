@@ -18,7 +18,13 @@ class Team(db.Model):
     slug = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
 
+    # TODO: This needs to be in a higher class and is inherited
+    _hide_command = []
+
     def __init__(self, name):
+        '''
+        name - Team name
+        '''
         self.name = name
         self.slug = slugify(name)
 

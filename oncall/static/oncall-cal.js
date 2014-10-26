@@ -435,4 +435,7 @@ $(document).ready(function() {
     });
 
     get_flashes();
+
+    $('#primary_team').multiselect();
+    $('#teams').multiselect();
 });
