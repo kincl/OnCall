@@ -35,6 +35,77 @@ def load_user(userid):
     return User.query.filter_by(username=userid).first()
 
 
+@app.before_request
+@app.route('/oncallOrder/rotate')
+def rotate_oncall():
+    # TODO: Allow for changes to this time limit
+    if session.get('rotated', None) != None and \
+       session.get('rotated') > datetime.now() - timedelta(0, 3):
+       session['rotated'] = datetime.now()
+       # TODO: this appears to only suceed if the last request was made more than X seconds ago?
+       return
+
+    # query the DB and check the last date the oncall rotation was done
+    app.logger.info('checking rotation')
+    session['rotated'] = datetime.now()
+    c = Cron.query.filter_by(name='oncall_rotate').first()
+    if c is None:
+        c = Cron('oncall_rotate')
+        db.session.add(c)
+        db.session.commit()
+
+    if _get_monday(c.date_updated) == _get_monday(date.today()):
+        # then we are in the same week, do nothing
+        return
+
+    app.logger.info('Rotating on call')
+    c.date_updated = date.today()
+    db.session.commit()
+
+    for team in Team.query.all():
+        currently_oncall = {}
+        for role in ROLES:
+            oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
+            for oo in oncall:
+                oo.order = (oo.order - 1) % len(oncall)
+                if oo.order == 0:
+                    currently_oncall[role] = oo
+
+        db.session.commit()
+
+        start_date = _get_monday(date.today())
+        end_date = start_date + timedelta(7)
+        real_events = _get_events_for_dates(team.slug, start_date, end_date)
+        current_date = start_date
+        build_events = {}
+        while current_date != end_date:
+            current_date_roles = []
+            for e in _filter_events_by_date(real_events, current_date):
+                current_date_roles.append(e.role)
+            for role in ROLES:
+                if role in current_date_roles:
+                    if build_events.get(role, None):
+                        db.session.add(build_events.get(role))
+                        del build_events[role]
+                else:
+                    if build_events.get(role, None):
+                        build_events.get(role).end = deepcopy(current_date)
+                    else:
+                        try:
+                            build_events[role] = Event(currently_oncall[role].user_username,
+                                                       currently_oncall[role].team_slug,
+                                                       role,
+                                                       current_date)
+                        except KeyError:
+                            # we dont have a current oncall role
+                            pass
+            current_date += ONE_DAY
+
+        for role, event in build_events.items():
+            db.session.add(event)
+        db.session.commit()
+
+
 @app.after_request
 def add_header(response):
     """
@@ -344,72 +415,6 @@ def get_future_events(team):
 
     return Response(json.dumps(future_events),
                     mimetype='application/json')
-
-
-@app.before_request
-@app.route('/oncallOrder/rotate')
-def rotate_oncall():
-    # TODO: Allow for changes to this time limit
-    if session.get('rotated', None) == None or \
-       session.get('rotated') < datetime.now() - timedelta(0, 60):
-        app.logger.info('checking rotation')
-
-        session['rotated'] = datetime.now()
-        c = Cron.query.filter_by(name='oncall_rotate').first()
-        if c is None:
-            c = Cron('oncall_rotate')
-            db.session.add(c)
-            db.session.commit()
-
-        if c.date_updated < _get_monday(date.today()):
-            app.logger.info('Rotating on call')
-            c.date_updated = date.today()
-            db.session.commit()
-
-            for team in Team.query.all():
-                currently_oncall = {}
-                for role in ROLES:
-                    oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
-                    for oo in oncall:
-                        oo.order = (oo.order - 1) % len(oncall)
-                        if oo.order == 0:
-                            currently_oncall[role] = oo
-
-                db.session.commit()
-
-                start_date = _get_monday(date.today())
-                end_date = start_date + timedelta(7)
-                real_events = _get_events_for_dates(team.slug, start_date, end_date)
-                current_date = start_date
-                build_events = {}
-                while current_date != end_date:
-                    current_date_roles = []
-                    for e in _filter_events_by_date(real_events, current_date):
-                        current_date_roles.append(e.role)
-                    for role in ROLES:
-                        if role in current_date_roles:
-                            if build_events.get(role, None):
-                                db.session.add(build_events.get(role))
-                                del build_events[role]
-                        else:
-                            if build_events.get(role, None):
-                                build_events.get(role).end = deepcopy(current_date)
-                            else:
-                                try:
-                                    build_events[role] = Event(currently_oncall[role].user_username,
-                                                               currently_oncall[role].team_slug,
-                                                               role,
-                                                               current_date)
-                                except KeyError:
-                                    # we dont have a current oncall role
-                                    pass
-                    current_date += ONE_DAY
-
-                for role, event in build_events.items():
-                    db.session.add(event)
-                db.session.commit()
-    else:
-        session['rotated'] = datetime.now()
 
 
 @app.route('/<team>/oncallOrder/<role>')

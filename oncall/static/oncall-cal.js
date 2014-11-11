@@ -87,7 +87,7 @@ function make_select_options(options, selected) {
 function get_color(username) {
     if (global.team_colors[username] !== undefined) { return global.team_colors[username]; }
     var offset = Object.keys(global.team_colors).length;
-    var color = offset*220;
+    var color = offset*219;
     global.team_colors[username] = color;
     return color;
 }
@@ -103,6 +103,7 @@ function update_calendar_team() {
         // Set up team
         $.getJSON( '/'+global.team+'/members', function( data ) {
             var items = [];
+            var usernames = [];
             var team = [];
             $.each( data, function( key, val ) {
                 var background = get_color(val['id']);
@@ -117,12 +118,14 @@ function update_calendar_team() {
                     revertDuration: 0  //  original position after the drag
                 });
                 items.push(member);
+                usernames.push(val['id']);
 
                 $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
                 team.push([val['id'],val['name']]);
             });
             $("#team_members").html(items);
             global.team_members = team;
+            global.team_usernames = usernames;
         });
 
         // remove old event source and add the current one, this causes a refetch
@@ -357,7 +360,7 @@ $(document).ready(function() {
         viewDisplay: function() { global.menu.hide(); },
 
         eventClick: function(data, event, view) {
-            if (data.projection !== true) {
+            if (data.editable !== false) {
                 var content = $('<div/>')
                               .attr('id', 'menu_content');
                 content.append($('<input/>')
@@ -395,6 +398,12 @@ $(document).ready(function() {
         },
 
         eventRender: function (event, element, view) {
+            // show events for users who are not in the team as noneditable
+            // if (global.team_usernames.indexOf(event.user_username) === -1) {
+            //     event.editable = false;
+            //     event.projection = true;
+            // }
+
             var opacity = "50%";
             if (event.projection === true) {
                 opacity = "75%";

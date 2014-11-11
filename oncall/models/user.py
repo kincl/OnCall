@@ -23,18 +23,21 @@ class User(db.Model):
                                   backref='user',
                                   lazy='dynamic')
 
-    _hide_command = ['events', 'oncallorder']
+    _hide_command = ['contact_card', 'events', 'oncallorder']
 
-    def __init__(self, username, name, team_slug = None):
+    def __init__(self, username, name, teams = None):
         '''
         username - username
         name - name
-        team_slug - primary team
+        teams - team1,team2
         '''
         self.username = username
         self.name = name
-        self.set_teams(team_slug)
-        self.primary_team = team_slug
+        self.set_teams(teams)
+        if teams:
+            self.primary_team = self.teams[0]
+        else:
+            self.primary_team = None
         self.contact_card = ''
 
     # TODO: Need to decide how to handle appends and single deletes?
@@ -42,7 +45,7 @@ class User(db.Model):
         new_teams = []
         # TODO: HAX?
         if isinstance(teams, str):
-            teams = [teams]
+            teams = teams.split(',')
 
         for team in teams:
             new_teams.append(Team.query.filter_by(slug = team).first())

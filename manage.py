@@ -101,6 +101,7 @@ manager.add_command('user', CRUD(User))
 manager.add_command('team', CRUD(Team))
 manager.add_command('event', CRUD(Event, ['list']))
 manager.add_command('oncallorder', CRUD(OncallOrder, ['list']))
+manager.add_command('cron', CRUD(Cron, ['list','update']))
 
 
 if __name__ == "__main__":
