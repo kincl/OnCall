@@ -10,6 +10,7 @@ class Event(db.Model):
     end = db.Column(db.Date)
 
     _hide_command = []
+    _search_on = 'id'
 
     def __init__(self, user_username, team_slug, role, start, end = None):
         self.user_username = user_username

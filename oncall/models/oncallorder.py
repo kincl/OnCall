@@ -9,6 +9,7 @@ class OncallOrder(db.Model):
     user_username = db.Column(db.String(200), db.ForeignKey('users.username'), primary_key=True)
 
     _hide_command = []
+    _search_on = 'team_slug'
 
     def __init__(self, team, user, role, order):
         self.team_slug = team

@@ -20,6 +20,7 @@ class Team(db.Model):
 
     # TODO: This needs to be in a higher class and is inherited
     _hide_command = []
+    _search_on = 'slug'
 
     def __init__(self, name):
         '''

@@ -7,6 +7,8 @@ from oncall import db
 import inspect
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
+from tabulate import tabulate
+
 manager = Manager(app)
 
 @manager.command
@@ -25,6 +27,7 @@ class CRUD(Command):
             if isinstance(v, InstrumentedAttribute) and \
                k not in self.model._hide_command:
                 self.attributes.append(k)
+        self.__doc__ = model.__doc__
 
     def get_options(self):
         opts = [Option('action', choices=self.choices, help="Action to take")]
@@ -34,12 +37,15 @@ class CRUD(Command):
             opts.append(Option('--{0}'.format(c.key)))
 
         # need to get all of the possible attributes that can be modified, seems like
-        # I don't need to do the above... TODO: fix?
+        # I don't need to do the above... --- do need it ---
         for k,v in self.model.__dict__.items():
             if isinstance(v, InstrumentedAttribute):
                 if '--{0}'.format(k) not in [opt.args[0] for opt in opts] and \
                    k not in self.model._hide_command:
                     opts.append(Option('--{0}'.format(k)))
+
+        # add selector option
+        opts.append(Option('--{0}'.format(self.model.__name__), help="Selector for update/delete functions, search on {0}".format(self.model._search_on)))
 
         return opts
 
@@ -62,12 +68,22 @@ class CRUD(Command):
 
     def update(self, options):
         # TODO: updating single entries is easy, need to handle things like user.teams
-        print options
+
+        if options[self.model.__name__] is None:
+            print "Use selector --{0} to select the item to update".format(self.model.__name__)
+            return
+
+        querydict = {self.model._search_on: options[self.model.__name__]}
+        user = self.model.query.filter_by(**querydict).first()
+
+        if user is None:
+            print "No user found"
+            return
+
+        print user, options
 
 
     def list(self):
-        from tabulate import tabulate
-
         table = []
         for t in self.model.query.all():
             row = []
@@ -78,8 +94,10 @@ class CRUD(Command):
         print tabulate(table, self.attributes, tablefmt='simple')
 
     def debug(self):
-        print self.model._hide_command
-        pass
+        #print self.model._hide_command
+
+        print self.model.__mapper__.primary_key
+
         # for t in self.model.query.all():
         #     print t
         #     for i in inspect.getmembers(t):

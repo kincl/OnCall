@@ -24,6 +24,7 @@ class User(db.Model):
                                   lazy='dynamic')
 
     _hide_command = ['contact_card', 'events', 'oncallorder']
+    _search_on = 'username'
 
     def __init__(self, username, name, teams = None):
         '''
