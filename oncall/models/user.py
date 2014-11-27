@@ -1,4 +1,5 @@
 from oncall import db
+
 from team import Team
 
 teams = db.Table('users_to_teams',
@@ -12,10 +13,14 @@ class User(db.Model):
     name = db.Column(db.String(200))
     primary_team = db.Column(db.String(200), db.ForeignKey('teams.slug'))
     contact_card = db.Column(db.Text())
+    # Not sure why I had this??
+    # teams = db.relationship('Team',
+    #                         secondary=teams,
+    #                         backref=db.backref('users',
+    #                                            lazy='dynamic'))
     teams = db.relationship('Team',
                             secondary=teams,
-                            backref=db.backref('users',
-                                               lazy='dynamic'))
+                            backref='users')
     events = db.relationship('Event',
                              backref='user',
                              lazy='dynamic')

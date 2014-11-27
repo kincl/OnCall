@@ -13,12 +13,19 @@ from forms import LoginForm, UpdateProfileForm
 import os
 
 app = Flask(__name__)
+
+db = SQLAlchemy(app)
+from oncall.models import Event, User, Team, OncallOrder, Cron
+app.db = db
+
+from oncall.api import api
+app.register_blueprint(api, url_prefix='/api')
+
 app.config.from_object('oncall.settings')
 if 'ONCALLAPP_SETTINGS' in os.environ:
     app.config.from_envvar('ONCALLAPP_SETTINGS')
 
-db = SQLAlchemy(app)
-from oncall.models import Event, User, Team, OncallOrder, Cron
+
 
 ROLES = ['Primary',
          'Secondary']
@@ -464,8 +471,7 @@ def update_oncall(team):
 @login_required
 def get_team_members(team):
     members = []
-    for u in Team.query.filter_by(slug=team).first() \
-                 .users.order_by(User.username).all():
+    for u in Team.query.filter_by(slug=team).first().users:
         members.append(u.to_json())
 
     return Response(json.dumps(members),

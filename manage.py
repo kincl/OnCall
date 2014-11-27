@@ -2,7 +2,7 @@ from flask.ext.script import Manager, Command, Option
 from oncall import app
 
 from oncall.models import OncallOrder, Event, Team, User, Cron
-from oncall import db
+from flask import current_app
 
 import inspect
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -14,8 +14,8 @@ manager = Manager(app)
 @manager.command
 def init_db():
     ''' Initialize the database '''
-    db.create_all()
-    db.session.commit()
+    current_app.db.create_all()
+    current_app.db.session.commit()
 
 
 class CRUD(Command):
