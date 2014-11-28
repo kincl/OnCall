@@ -1,6 +1,7 @@
 from oncall import db
 
 # TODO: ensure user only exists once?
+# TODO: change name to Schedule
 class OncallOrder(db.Model):
     __tablename__ = 'oncall_order'
     order = db.Column(db.Integer)

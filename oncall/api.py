@@ -72,13 +72,62 @@ def teams_members(team_slug):
     current_app.db.session.commit()
     return Response(status=200)
 
-@api.route('/teams/<team>/schedule', methods = ['GET', 'PUT', 'DELETE'])
-def teams_schedule(team):
-    abort(501)
+@api.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
+def teams_schedule(team_slug):
+    if request.method == 'GET':
+        return jsonify({'schedule':
+                       {'primary': [s.to_json() for s in OncallOrder.query. \
+                                    filter_by(role='Primary', team_slug=team_slug). \
+                                    order_by(OncallOrder.order).all()],
+                        'secondary': [s.to_json() for s in OncallOrder.query. \
+                                      filter_by(role='Secondary', team_slug=team_slug). \
+                                      order_by(OncallOrder.order).all()]}})
 
-@api.route('/teams/<team>/on_call', methods = ['GET', 'PUT', 'DELETE'])
-def teams_on_call(team):
-    abort(501)
+# TODO: not needed?
+def _str_to_date(date_str):
+    """ converts string of 2014-04-13 to Python date """
+    return date(*[int(n) for n in str(date_str).split('-')])
+
+def _get_events_for_dates(team, start_date, end_date, exclude_event=None):
+    start = start_date
+    end = end_date if end_date else start_date
+    events_start = Event.query.filter(start >= Event.start,
+                                      start <= Event.end,
+                                      Event.id != exclude_event,
+                                      Event.team_slug == team)
+    events_end = Event.query.filter(end >= Event.start,
+                                    end <= Event.end,
+                                    Event.id != exclude_event,
+                                    Event.team_slug == team)
+    events_inside = Event.query.filter(start <= Event.start,
+                                       end >= Event.end,
+                                       Event.id != exclude_event,
+                                       Event.team_slug == team)
+
+    return events_start.union(events_end, events_inside).all()
+
+from datetime import date, timedelta
+import time
+
+def _get_week_dates(date):
+    """ Returns a tuple of dates for the Monday and Sunday of
+        the week for the specified date. """
+    monday = date.today() - timedelta((date.isoweekday() - 1) % 7)
+    sunday = monday + timedelta(6)
+    return monday, sunday
+
+@api.route('/teams/<team_slug>/on_call', methods = ['GET', 'PUT', 'DELETE'])
+def teams_on_call(team_slug):
+    if request.method == 'GET':
+        """ Default to the current day if nothing specified """
+        #monday, sunday = _get_week_dates(date.today())
+        date_start = request.args.get('start', None, type=float)
+        date_end = request.args.get('end', None, type=float)
+        events = _get_events_for_dates(team_slug,
+                                       (date.fromtimestamp(date_start) if date_start is not None else date.today()),
+                                       (date.fromtimestamp(date_end) if date_end is not None else date.today()))
+
+        return jsonify({'on_call': [e.to_json() for e in events]})
 
 @api.route('/users', methods = ['GET', 'POST'])
 def users():
