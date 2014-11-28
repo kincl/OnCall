@@ -52,13 +52,15 @@ class User(db.Model):
         # TODO: HAX?
         if isinstance(teams, str):
             teams = teams.split(',')
+        if teams is None:
+            teams = []
 
         for team in teams:
             new_teams.append(Team.query.filter_by(slug = team).first())
         self.teams = new_teams
 
     def to_json(self):
-        return dict(name=self.name, id=self.username)
+        return dict(name=self.name, id=self.username, teams=[t.slug for t in self.teams])
 
     def is_active(self):
         return True
