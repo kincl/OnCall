@@ -6,7 +6,15 @@ from oncall.models import Event, User, Team, OncallOrder, Cron
 
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
+from datetime import date, timedelta
+import time
+
+from copy import deepcopy
+
 api = Blueprint('api', __name__)
+
+ROLES = ['Primary',
+         'Secondary']
 
 
 def _update_object_model(model, instance):
@@ -17,9 +25,11 @@ def _update_object_model(model, instance):
             return Response('Key: {0} not in model'.format(key), status=500)
         setattr(instance, key, value)
 
+
 @api.route('/')
 def help():
     return "Help about the API will go here"
+
 
 @api.route('/teams', methods = ['GET', 'POST'])
 def teams():
@@ -33,6 +43,7 @@ def teams():
 
     current_app.db.session.commit()
     return Response(status=200)
+
 
 @api.route('/teams/<team_slug>', methods = ['GET', 'PUT', 'DELETE'])
 def teams_team(team_slug):
@@ -50,6 +61,7 @@ def teams_team(team_slug):
 
     current_app.db.session.commit()
     return Response(status=200)
+
 
 @api.route('/teams/<team_slug>/members', methods = ['GET', 'PUT', 'DELETE'])
 def teams_members(team_slug):
@@ -72,6 +84,7 @@ def teams_members(team_slug):
     current_app.db.session.commit()
     return Response(status=200)
 
+
 @api.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
 def teams_schedule(team_slug):
     if request.method == 'GET':
@@ -83,12 +96,44 @@ def teams_schedule(team_slug):
                                       filter_by(role='Secondary', team_slug=team_slug). \
                                       order_by(OncallOrder.order).all()]}})
 
+
 # TODO: not needed?
 def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
 
-def _get_events_for_dates(team, start_date, end_date, exclude_event=None):
+
+ONCALL_START = 1
+ONE_DAY = timedelta(1)
+
+
+def _get_monday(date):
+    if date.isoweekday() == ONCALL_START:
+        return date
+    else:
+        return _get_monday(date - ONE_DAY)
+
+
+def _filter_events_by_date(events, filter_date):
+    return_events = []
+    for event in events:
+        if filter_date >= event.start and filter_date <= event.end:
+            return_events.append(event)
+    return return_events
+
+
+def _serialize_and_delete_role(future_events, long_events, role):
+    """Helper func to stringify dates and delete a long running event role from
+       the dict and add it to the list of returned future events. Only really
+       useful in get_future_events()"""
+    if long_events.get(role):
+        long_events[role]['start'] = str(long_events[role]['start'])
+        long_events[role]['end'] = str(long_events[role]['end'])
+        future_events += [long_events[role]]
+        del long_events[role]
+
+
+def _get_events_for_dates(team, start_date, end_date, exclude_event=None, predict=False):
     start = start_date
     end = end_date if end_date else start_date
     events_start = Event.query.filter(start >= Event.start,
@@ -104,10 +149,77 @@ def _get_events_for_dates(team, start_date, end_date, exclude_event=None):
                                        Event.id != exclude_event,
                                        Event.team_slug == team)
 
-    return events_start.union(events_end, events_inside).all()
+    events = events_start.union(events_end, events_inside).all()
 
-from datetime import date, timedelta
-import time
+    if not predict:
+        return events
+
+    sched_query = OncallOrder.query.filter_by(team_slug=team) \
+                                   .order_by(OncallOrder.order,
+                                             OncallOrder.role)
+    sched_all = sched_query.all()
+    sched_len = len(sched_all)/len(ROLES)
+
+    if sched_len == 0:
+        return events
+
+    # If we are looking ahead, figure out where to start in the order based on the current date
+    if start_date > date.today():
+        delta = _get_monday(start_date) - _get_monday(date.today())
+        current_order = delta.days / 7 % sched_len
+        current_date = _get_monday(start_date)
+    elif start_date < date.today() and end_date < date.today():
+        # Both request dates are in the past, so we are not predicting events
+        return events
+    else:
+        current_order = 0
+        current_date = _get_monday(date.today())
+
+    prediction_id = 1
+    event_buffer = {}
+    future_events = []
+    while current_date <= end_date:
+        current_date_roles = []
+        for e in _filter_events_by_date(events, current_date):
+            current_date_roles.append(e.role)
+
+        for role in ROLES:
+            if role in current_date_roles:
+                # stop the long running event because a real event exists
+                # but if the predicted event ends before the start date, just delete it
+                if event_buffer.get(role) and event_buffer[role]['end'] < start_date:
+                    del event_buffer[role]
+                _serialize_and_delete_role(future_events, event_buffer, role)
+            else:
+                try:
+                    # just increment they day, we are already building an event
+                    event_buffer[role]['end'] = deepcopy(current_date)
+                except KeyError:
+                    # Build the long event
+                    oncall_now = sched_query.filter_by(order=current_order,
+                                                       role=role).first()
+                    if oncall_now:
+                        event_buffer[role] = dict(editable=False,
+                                                 projection=True,
+                                                 id='prediction_%s' % prediction_id,
+                                                 start=deepcopy(current_date),
+                                                 end=deepcopy(current_date),
+                                                 role=role,
+                                                 title=oncall_now.get_title(),
+                                                 user_username=oncall_now.user_username)
+                        prediction_id += 1
+
+        # stop all long running event builds because we are at the end of the week
+        # TODO: am I sure that this mod 7 works right?
+        if current_date.isoweekday() == ONCALL_START + 6 % 7 or current_date == end_date:
+            for role in ROLES:
+                _serialize_and_delete_role(future_events, event_buffer, role)
+            if sched_len > 0:
+                current_order = (current_order + 1) % sched_len
+        current_date += ONE_DAY
+
+    return events + future_events
+
 
 def _get_week_dates(date):
     """ Returns a tuple of dates for the Monday and Sunday of
@@ -116,18 +228,24 @@ def _get_week_dates(date):
     sunday = monday + timedelta(6)
     return monday, sunday
 
+
 @api.route('/teams/<team_slug>/on_call', methods = ['GET', 'PUT', 'DELETE'])
 def teams_on_call(team_slug):
     if request.method == 'GET':
         """ Default to the current day if nothing specified """
         #monday, sunday = _get_week_dates(date.today())
-        date_start = request.args.get('start', None, type=float)
-        date_end = request.args.get('end', None, type=float)
-        events = _get_events_for_dates(team_slug,
-                                       (date.fromtimestamp(date_start) if date_start is not None else date.today()),
-                                       (date.fromtimestamp(date_end) if date_end is not None else date.today()))
+        req_start = request.args.get('start', None, type=float)
+        req_end = request.args.get('end', None, type=float)
+        date_start = (date.fromtimestamp(req_start) if req_start is not None else date.today())
+        date_end = (date.fromtimestamp(req_end) if req_end is not None else date.today())
 
-        return jsonify({'on_call': [e.to_json() for e in events]})
+        events = _get_events_for_dates(team_slug,
+                                       date_start,
+                                       date_end,
+                                       predict=True)
+
+        return jsonify({'on_call': [e.to_json() if isinstance(e, Event) else e for e in events]})
+
 
 @api.route('/users', methods = ['GET', 'POST'])
 def users():
@@ -141,6 +259,7 @@ def users():
 
     current_app.db.session.commit()
     return Response(status=200)
+
 
 @api.route('/users/<username>', methods = ['GET', 'PUT', 'DELETE'])
 def users_user(username):
@@ -162,9 +281,11 @@ def users_user(username):
     current_app.db.session.commit()
     return Response(status=200)
 
+
 @api.route('/users/<user>/on_call', methods = ['GET', 'PUT', 'DELETE'])
 def users_on_call(user):
     abort(501)
+
 
 @api.route('/roles', methods = ['GET'])
 def roles():
