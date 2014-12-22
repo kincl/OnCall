@@ -15,7 +15,7 @@ class OncallOrder(db.Model):
     def __init__(self, team, user, role, order):
         self.team_slug = team
         self.user_username = user
-        self.role = role
+        self.role = role.capitalize()
         self.order = order
 
     def __repr__(self):

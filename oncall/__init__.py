@@ -19,7 +19,7 @@ from oncall.models import Event, User, Team, OncallOrder, Cron
 app.db = db
 
 from oncall.api import api
-app.register_blueprint(api, url_prefix='/api')
+app.register_blueprint(api, url_prefix='/api/v1')
 
 app.config.from_object('oncall.settings')
 if 'ONCALLAPP_SETTINGS' in os.environ:

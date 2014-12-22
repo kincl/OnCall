@@ -217,6 +217,13 @@ def teams_members(team_slug):
 
 @api.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
 def teams_schedule(team_slug):
+    """
+
+        PUT structure:
+
+        {"shedule":{"primary":[[0,"jkincl"],[1,"user1"]], "secondary":[[0,"user1"],[1,"jkincl"]]}}
+
+    """
     if request.method == 'GET':
         return jsonify({'schedule':
                        {'primary': [s.to_json() for s in OncallOrder.query. \
@@ -225,6 +232,37 @@ def teams_schedule(team_slug):
                         'secondary': [s.to_json() for s in OncallOrder.query. \
                                       filter_by(role='Secondary', team_slug=team_slug). \
                                       order_by(OncallOrder.order).all()]}})
+
+    if request.method == 'PUT':
+        if not request.json or not 'schedule' in request.json:
+            abort(400)
+        sched = request.json.get('schedule')
+
+        # Maybe a better way to do this but delete all since we are doing an add all
+        for item in OncallOrder.query.filter_by(team_slug=team_slug).all():
+            current_app.db.session.delete(item)
+
+        max_len = -1
+
+        for role in [role.lower() for role in ROLES]:
+            if role not in sched:
+                abort(400)
+            if max_len == -1:
+                max_len = len(sched.get(role))
+            else:
+                if len(sched.get(role)) != max_len:
+                    abort(400)
+
+            for seq in sched.get(role):
+                user = User.query.filter_by(username=seq[1]).first_or_404().username
+                current_app.db.session.add(OncallOrder(team_slug, user, role, seq[0]))
+
+    if request.method == 'DELETE':
+        for item in OncallOrder.query.filter_by(team_slug=team_slug).all():
+            current_app.db.session.delete(item)
+
+    current_app.db.session.commit()
+    return Response(status=200)
 
 
 @api.route('/teams/<team_slug>/events', methods = ['GET', 'POST'])
