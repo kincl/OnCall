@@ -432,7 +432,6 @@ def get_oncall_order(team, role):
                                                role=role) \
                                     .order_by(OncallOrder.order).all()
 
-
     team_members = Team.query.filter_by(slug=team).first() \
                              .users.order_by(User.username).all()
     for o in oncall_order:

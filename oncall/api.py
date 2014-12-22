@@ -15,6 +15,8 @@ api = Blueprint('api', __name__)
 
 ROLES = ['Primary',
          'Secondary']
+ONCALL_START = 1
+ONE_DAY = timedelta(1)
 
 
 def _update_object_model(model, instance):
@@ -26,85 +28,10 @@ def _update_object_model(model, instance):
         setattr(instance, key, value)
 
 
-@api.route('/')
-def help():
-    return "Help about the API will go here"
-
-
-@api.route('/teams', methods = ['GET', 'POST'])
-def teams():
-    if request.method == 'GET':
-        return jsonify({'teams': [t.to_json() for t in Team.query.all()]})
-
-    if request.method == 'POST':
-        if not request.json or not 'team' in request.json:
-            abort(400)
-        current_app.db.session.add(Team(request.json.get('team')))
-
-    current_app.db.session.commit()
-    return Response(status=200)
-
-
-@api.route('/teams/<team_slug>', methods = ['GET', 'PUT', 'DELETE'])
-def teams_team(team_slug):
-    team = Team.query.filter_by(slug=team_slug).first_or_404()
-    if request.method == 'GET':
-        return jsonify(team.to_json())
-
-    if request.method == 'PUT':
-        if not request.json:
-            abort(400)
-        _update_object_model(Team, team)
-
-    if request.method == 'DELETE':
-        current_app.db.session.delete(team)
-
-    current_app.db.session.commit()
-    return Response(status=200)
-
-
-@api.route('/teams/<team_slug>/members', methods = ['GET', 'PUT', 'DELETE'])
-def teams_members(team_slug):
-    team = Team.query.filter_by(slug=team_slug).first_or_404()
-    if request.method == 'GET':
-        members = []
-        for u in team.users:
-            members.append(u.to_json())
-
-        return jsonify({'members': members})
-
-    if request.method == 'PUT':
-        if not request.json or not 'members' in request.json:
-            abort(400)
-        team.users = [User.query.filter_by(username=u).first_or_404() for u in request.json.get('members')]
-
-    if request.method == 'DELETE':
-        team.users = []
-
-    current_app.db.session.commit()
-    return Response(status=200)
-
-
-@api.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
-def teams_schedule(team_slug):
-    if request.method == 'GET':
-        return jsonify({'schedule':
-                       {'primary': [s.to_json() for s in OncallOrder.query. \
-                                    filter_by(role='Primary', team_slug=team_slug). \
-                                    order_by(OncallOrder.order).all()],
-                        'secondary': [s.to_json() for s in OncallOrder.query. \
-                                      filter_by(role='Secondary', team_slug=team_slug). \
-                                      order_by(OncallOrder.order).all()]}})
-
-
 # TODO: not needed?
 def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
-
-
-ONCALL_START = 1
-ONE_DAY = timedelta(1)
 
 
 def _get_monday(date):
@@ -229,7 +156,78 @@ def _get_week_dates(date):
     return monday, sunday
 
 
-@api.route('/teams/<team_slug>/on_call', methods = ['GET', 'PUT', 'DELETE'])
+@api.route('/')
+def help():
+    return "Help about the API will go here"
+
+
+@api.route('/teams', methods = ['GET', 'POST'])
+def teams():
+    if request.method == 'GET':
+        return jsonify({'teams': [t.to_json() for t in Team.query.all()]})
+
+    if request.method == 'POST':
+        if not request.json or not 'team' in request.json:
+            abort(400)
+        current_app.db.session.add(Team(request.json.get('team')))
+
+    current_app.db.session.commit()
+    return Response(status=200)
+
+
+@api.route('/teams/<team_slug>', methods = ['GET', 'PUT', 'DELETE'])
+def teams_team(team_slug):
+    team = Team.query.filter_by(slug=team_slug).first_or_404()
+    if request.method == 'GET':
+        return jsonify(team.to_json())
+
+    if request.method == 'PUT':
+        if not request.json:
+            abort(400)
+        _update_object_model(Team, team)
+
+    if request.method == 'DELETE':
+        current_app.db.session.delete(team)
+
+    current_app.db.session.commit()
+    return Response(status=200)
+
+
+@api.route('/teams/<team_slug>/members', methods = ['GET', 'PUT', 'DELETE'])
+def teams_members(team_slug):
+    team = Team.query.filter_by(slug=team_slug).first_or_404()
+    if request.method == 'GET':
+        members = []
+        for u in team.users:
+            members.append(u.to_json())
+
+        return jsonify({'members': members})
+
+    if request.method == 'PUT':
+        if not request.json or not 'members' in request.json:
+            abort(400)
+        team.users = [User.query.filter_by(username=u).first_or_404() for u in request.json.get('members')]
+
+    if request.method == 'DELETE':
+        team.users = []
+
+    current_app.db.session.commit()
+    return Response(status=200)
+
+
+@api.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
+def teams_schedule(team_slug):
+    if request.method == 'GET':
+        return jsonify({'schedule':
+                       {'primary': [s.to_json() for s in OncallOrder.query. \
+                                    filter_by(role='Primary', team_slug=team_slug). \
+                                    order_by(OncallOrder.order).all()],
+                        'secondary': [s.to_json() for s in OncallOrder.query. \
+                                      filter_by(role='Secondary', team_slug=team_slug). \
+                                      order_by(OncallOrder.order).all()]}})
+
+
+@api.route('/teams/<team_slug>/events', methods = ['GET', 'POST'])
 def teams_on_call(team_slug):
     if request.method == 'GET':
         """ Default to the current day if nothing specified """
@@ -244,7 +242,16 @@ def teams_on_call(team_slug):
                                        date_end,
                                        predict=True)
 
-        return jsonify({'on_call': [e.to_json() if isinstance(e, Event) else e for e in events]})
+        return jsonify({'range':[str(date_start), str(date_end)],
+                        'on_call': [e.to_json() if isinstance(e, Event) else e for e in events]})
+
+
+@api.route('/teams/<team_slug>/events/<eventid>', methods = ['GET', 'PUT', 'DELETE'])
+def teams_on_call_events_event(eventid):
+    if request.method == 'DELETE':
+        e = Event.query.filter_by(id=eventid).first()
+        db.session.delete(e)
+        db.session.commit()
 
 
 @api.route('/users', methods = ['GET', 'POST'])
