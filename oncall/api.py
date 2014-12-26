@@ -265,8 +265,41 @@ def teams_schedule(team_slug):
     return Response(status=200)
 
 
+def _can_add_event(team, start_date, end_date, exclude_event=None):
+    """ Given a start and end date, make sure that there are not more
+        than two events. """
+
+    events_all = _get_events_for_dates(team,
+                                       start_date,
+                                       end_date,
+                                       exclude_event)
+
+    i = _str_to_date(start_date)
+    while i != _str_to_date(end_date if end_date else start_date) + ONE_DAY:
+        count = 0
+        for e in events_all:
+            if i >= e.start and i <= e.end:
+                count += 1
+        if count >= len(ROLES):
+            return False
+        i += ONE_DAY
+    return True
+
+
+def _other_role(start_role):
+    """ Select the !this role """
+    # TODO: make it work for more than two roles
+    for role in ROLES:
+        if role != start_role:
+            return role
+
+
 @api.route('/teams/<team_slug>/events', methods = ['GET', 'POST'])
 def teams_on_call(team_slug):
+    """
+        POST:
+            {"start":"2014-12-23", "username":"jkincl"}
+    """
     if request.method == 'GET':
         """ Default to the current day if nothing specified """
         #monday, sunday = _get_week_dates(date.today())
@@ -283,13 +316,28 @@ def teams_on_call(team_slug):
         return jsonify({'range':[str(date_start), str(date_end)],
                         'on_call': [e.to_json() if isinstance(e, Event) else e for e in events]})
 
+    if request.method == 'POST':
+        if _can_add_event(team_slug, request.json.get('start'), request.json.get('end')):
+            events = _get_events_for_dates(team_slug,
+                                           request.json.get('start'),
+                                           request.json.get('end'))
+            newe = Event(request.json.get('username'),
+                         team_slug,
+                         ROLES[0] if events == [] else _other_role(events[0].role),
+                         _str_to_date(request.json.get('start')))
+            current_app.db.session.add(newe)
+
+    # TODO: Return status and result of action
+    current_app.db.session.commit()
+    return Response(status=200)
+
 
 @api.route('/teams/<team_slug>/events/<eventid>', methods = ['GET', 'PUT', 'DELETE'])
 def teams_on_call_events_event(eventid):
     if request.method == 'DELETE':
         e = Event.query.filter_by(id=eventid).first()
-        db.session.delete(e)
-        db.session.commit()
+        current_app.db.session.delete(e)
+        current_app.db.session.commit()
 
 
 @api.route('/users', methods = ['GET', 'POST'])
