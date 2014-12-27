@@ -131,29 +131,20 @@ function update_calendar_team() {
         // remove old event source and add the current one, this causes a refetch
         // of events
         $('#calendar').fullCalendar( 'removeEventSource',global.event_source);
-        $('#calendar').fullCalendar( 'removeEventSource',global.predict_event_source);
 
         event_source = {
-            url: '/'+global.team+'/events',
+            url: '/api/v1/teams/'+global.team+'/events',
             type: 'GET',
             // TODO: Better than alert() is needed...
             error: function() {
                 //alert('there was an error while fetching events!');
+            },
+            data: {
+                minimal: 'true'
             },
         };
         global.event_source = event_source;
         $('#calendar').fullCalendar( 'addEventSource', event_source);
-
-        predict_event_source = {
-            url: '/'+global.team+'/predict_events',
-            type: 'GET',
-            // TODO: Better than alert() is needed...
-            error: function() {
-                //alert('there was an error while fetching events!');
-            },
-        };
-        global.predict_event_source = predict_event_source;
-        $('#calendar').fullCalendar( 'addEventSource', predict_event_source);
     }
 }
 
@@ -274,10 +265,13 @@ function get_flashes() {
 
 
 $(document).ready(function() {
+
+    // when oncall schedule modal is re-hidden, refresh the calendar
     $('#oncallOrderModal').on('hide.bs.modal', function (e) {
         update_calendar_team();
     });
 
+    // set up the qtip div element that will be used when event is clicked
     var menu = $('<div/>').qtip({
         //id: 'calendar',
         prerender: true,
@@ -304,17 +298,10 @@ $(document).ready(function() {
     global.menu = menu;
 
     // get teams
-    $.getJSON( "/teams", function( data ) {
+    $.getJSON( "/api/v1/teams", function( data ) {
         global.teams = [];
         $.each( data['teams'], function( key, val ) {
             global.teams.push(val);
-
-            if (data['primary'] === null) {
-                select_team(val['id'], false);
-            }
-            else {
-                select_team(data['primary'], false);
-            }
 
             var onclick = "select_team('"+val['id']+"')";
             $('.team-list').append($('<li/>')
@@ -325,9 +312,16 @@ $(document).ready(function() {
         });
     });
 
+    // set user state
+    $.getJSON( "/user/current_state", function( data ) {
+        select_team(data['primary_team'], false);
+    });
+
+    get_flashes(); // TODO combine json req with user state?
+
     // get roles and add to global variable
-    $.getJSON( "/roles", function( data ) {
-        global.roles = data;
+    $.getJSON( "/api/v1/roles", function( data ) {
+        global.roles = data['roles'];
     });
 
     // Set up calendar
@@ -443,7 +437,6 @@ $(document).ready(function() {
         event.preventDefault();
     });
 
-    get_flashes();
 
     $('#primary_team').multiselect();
     $('#teams').multiselect();

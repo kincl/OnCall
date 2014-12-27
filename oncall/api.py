@@ -313,8 +313,14 @@ def teams_on_call(team_slug):
                                        date_end,
                                        predict=True)
 
+        event_array = [e.to_json() if isinstance(e, Event) else e for e in events]
+
+        # For FullCalendar so it returns in the correct way
+        if request.args.get('minimal'):
+            return Response(json.dumps(event_array),
+                            mimetype='application/json')
         return jsonify({'range':[str(date_start), str(date_end)],
-                        'on_call': [e.to_json() if isinstance(e, Event) else e for e in events]})
+                        'on_call': event_array})
 
     if request.method == 'POST':
         if _can_add_event(team_slug, request.json.get('start'), request.json.get('end')):
@@ -438,4 +444,5 @@ def users_on_call(user):
 
 @api.route('/roles', methods = ['GET'])
 def roles():
-    abort(501)
+    if request.method == 'GET':
+        return jsonify(roles=ROLES)

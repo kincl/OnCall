@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages
+from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages, jsonify
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
 
@@ -273,6 +273,12 @@ def current_oncall():
 # TODO: Add endpoints to get who is oncall right now
 
 
+@app.route('/user/current_state')
+@login_required
+def user_current_state():
+    return jsonify({'primary_team': current_user.primary_team})
+
+
 @app.route('/user/getFlashes')
 @login_required
 def user_get_flashes():
@@ -298,7 +304,7 @@ def user_update_prefs():
 
 
 @app.route('/roles')
-@login_required
+#@login_required
 def get_roles():
     return Response(json.dumps(ROLES),
                     mimetype='application/json')
