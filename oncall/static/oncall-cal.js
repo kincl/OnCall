@@ -101,11 +101,11 @@ function update_calendar_team() {
         //var team_id = $('select#team option:selected').attr('id');
 
         // Set up team
-        $.getJSON( '/'+global.team+'/members', function( data ) {
+        $.getJSON( '/api/v1/teams/'+global.team+'/members', function( data ) {
             var items = [];
             var usernames = [];
             var team = [];
-            $.each( data, function( key, val ) {
+            $.each( data['members'], function( key, val ) {
                 var background = get_color(val['id']);
                 var member = $("<div/>", {
                                "class": "team_member",
