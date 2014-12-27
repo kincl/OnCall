@@ -332,12 +332,68 @@ def teams_on_call(team_slug):
     return Response(status=200)
 
 
+def _is_role_valid(eventid, new_role, start_date=None, end_date=None):
+    """ Can we change the of the given event to new_role, look up
+        the event and see if there are any events that have that
+        role already """
+    e = Event.query.filter_by(id=eventid).first()
+    events = _get_events_for_dates(e.team_slug,
+                                   start_date if start_date else e.start,
+                                   end_date if end_date else e.end,
+                                   exclude_event=eventid)
+    flag = True
+    for event in events:
+        if event.role == new_role:
+            flag = False
+    return flag
+
+
 @api.route('/teams/<team_slug>/events/<eventid>', methods = ['GET', 'PUT', 'DELETE'])
-def teams_on_call_events_event(eventid):
+def teams_on_call_events_event(team_slug, eventid):
+    if request.method == 'GET':
+        return jsonify(Event.query.filter_by(id=eventid).first_or_404().to_json())
+
+    if request.method == 'PUT':
+        start = request.json.get('start')
+        end = request.json.get('end') if request.json.get('end') \
+                                      else request.json.get('start')
+
+        e = Event.query.filter_by(id=eventid).first_or_404()
+        if start:
+            if _can_add_event(e.team_slug,
+                              start,
+                              end,
+                              exclude_event=eventid):
+                if _is_role_valid(eventid,
+                                  e.role,
+                                  start,
+                                  end):
+                    e.start = _str_to_date(start)
+                    e.end = _str_to_date(end)
+                elif _is_role_valid(eventid,
+                                    _other_role(e.role),
+                                    start,
+                                    end):
+                    e.start = _str_to_date(start)
+                    e.end = _str_to_date(end)
+                    e.role = _other_role(e.role)
+
+        # TODO: need much better error checking here, any role is valid!
+        if request.json.get('role'):
+            print request.json.get('role')
+            if _is_role_valid(eventid, request.json.get('role')):
+                e.role = request.json.get('role')
+
+        # TODO: Need error checking here!
+        if request.json.get('user_username'):
+            e.user_username = request.json.get('user_username')
+
     if request.method == 'DELETE':
-        e = Event.query.filter_by(id=eventid).first()
+        e = Event.query.filter_by(id=eventid).first_or_404()
         current_app.db.session.delete(e)
-        current_app.db.session.commit()
+
+    current_app.db.session.commit()
+    return Response(status=200)
 
 
 @api.route('/users', methods = ['GET', 'POST'])
