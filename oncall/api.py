@@ -226,10 +226,10 @@ def teams_schedule(team_slug):
     """
     if request.method == 'GET':
         return jsonify({'schedule':
-                       {'primary': [s.to_json() for s in OncallOrder.query. \
+                       {'Primary': [s.to_json() for s in OncallOrder.query. \
                                     filter_by(role='Primary', team_slug=team_slug). \
                                     order_by(OncallOrder.order).all()],
-                        'secondary': [s.to_json() for s in OncallOrder.query. \
+                        'Secondary': [s.to_json() for s in OncallOrder.query. \
                                       filter_by(role='Secondary', team_slug=team_slug). \
                                       order_by(OncallOrder.order).all()]}})
 
@@ -244,7 +244,7 @@ def teams_schedule(team_slug):
 
         max_len = -1
 
-        for role in [role.lower() for role in ROLES]:
+        for role in [role for role in ROLES]:
             if role not in sched:
                 abort(400)
             if max_len == -1:

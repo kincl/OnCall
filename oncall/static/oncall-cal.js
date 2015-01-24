@@ -18,23 +18,34 @@ function formatDate(d) {
 }
 
 function modify_event_by_id(event_id) {
-    $.post('/'+global.team+'/event/'+event_id,
-           {'user_username': $('div#menu_content #user option:selected').attr('id'),
-            'role': $('div#menu_content #role option:selected').val()});
+    $.ajax({
+        type: 'PUT',
+        url: '/api/v1/teams/'+global.team+'/events/'+event_id,
+        contentType: 'application/json',
+        data: JSON.stringify({'user_username': $('div#menu_content #user option:selected').attr('id'),
+                              'role': $('div#menu_content #role option:selected').val()})
+    });
     $('#calendar').fullCalendar('refetchEvents');
 }
 
 function delete_event_by_id(event_id) {
-    $.post('/'+global.team+'/event/delete/'+event_id);
+    $.ajax({
+        type: 'DELETE',
+        url: '/api/v1/teams/'+global.team+'/events/'+event_id
+    });
     $('#calendar').fullCalendar('refetchEvents');
     global.menu.hide();
 }
 
 function updateAndRefetch(event, delta) {
-    $.post('/'+global.team+'/event/'+event.id,
-           {'start': formatDate(event.start),
-            'end': formatDate(event.end),
-            'username': $(this).attr('id')});
+    $.ajax({
+        type: 'PUT',
+        url: '/api/v1/teams/'+global.team+'/events/'+event.id,
+        contentType: 'application/json',
+        data: JSON.stringify({'start': formatDate(event.start),
+                              'end': formatDate(event.end),
+                              'username': $(this).attr('id')})
+    });
     $('#calendar').fullCalendar('refetchEvents');
 }
 
@@ -43,13 +54,14 @@ function updateOncall() {
     var secondary = [];
     //var team_id = $('select#team option:selected').attr('id');
 
-    $('ul#primary_oncall li:not(.team_member_placeholder)').each(function(k, v) { primary.push($(v).attr('id')); });
-    $('ul#secondary_oncall li:not(.team_member_placeholder)').each(function(k, v) { secondary.push($(v).attr('id')); });
+    $('ul#Primary_rotation li:not(.team_member_placeholder)').each(function(k, v) { primary.push([k,$(v).attr('id')]); });
+    $('ul#Secondary_rotation li:not(.team_member_placeholder)').each(function(k, v) { secondary.push([k,$(v).attr('id')]); });
     $.ajax({
-        type: 'post',
-        url: '/'+global.team+'/oncallOrder',
-        data: {'Primary': primary,
-               'Secondary': secondary},
+        type: 'PUT',
+        url: '/api/v1/teams/'+global.team+'/schedule',
+        contentType: 'application/json',
+        data: JSON.stringify({'schedule': {'Primary': primary,
+                                           'Secondary': secondary}}),
 
         success: function(data, status) {
             $('#oncallOrderModal').modal('hide');
@@ -148,69 +160,83 @@ function update_calendar_team() {
     }
 }
 
-function set_up_oncall_order(role, oncall_html, notoncall_html) {
-    $(oncall_html).empty();
-    $(oncall_html).text(role);
-    $(notoncall_html).empty();
-    $(notoncall_html).text("Not in rotation");
+/*
+set up schedule
+- pull primary,secondary for team
+- pull team member
+- as building rotation schedule for each role, mark off team member
+- put rest of team in not in rotation
+*/
+function make_schedule_member(user) {
+    /*create list element for each member in oncall*/
 
-    $.getJSON('/'+global.team+'/oncallOrder/'+role, function( data ) {
-        var oncall = [];
-        var not_oncall = [];
-        var team = [];
-        $.each( data['oncall'], function( key, val ) {
-            var background = get_color(val['user']['id']);
-            var member = $("<li/>", {
-                           "class": "team_member",
-                           "id": val['user']['id'],
-                           text: val['user']['name']
-                          });
-            oncall.push(member);
-
-            $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
-            team.push([val['user']['id'],val['user']['name']]);
-        });
-        oncall.push($("<li/>", {
-                       "class": "team_member_placeholder",
-                       text: "+"
-                      }));
-        $.each( data['not_oncall'], function( key, val ) {
-            var background = get_color(val['id']);
-            var member = $("<li/>", {
-                           "class": "team_member",
-                           "id": val['id'],
-                           text: val['name']
-                          });
-            not_oncall.push(member);
-
-            $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
-            team.push([val['id'],val['name']]);
-        });
-        $(oncall_html).append(oncall);
-        $(notoncall_html).append(not_oncall);
+    var background = get_color(user['id']);
+    var member = $("<li/>", {
+        "class": "team_member",
+        "id": user['id'],
+        text: user['name']
     });
+    $(member).css('background-color', 'hsl('+background+', 70%, 50%)');
+    return member;
+}
 
-    $(oncall_html).sortable({
-      connectWith: notoncall_html,
-      placeholder: "ui-state-highlight",
-      items: "li:not(.team_member_placeholder)",
-      containment: $(oncall_html).parent()
-    }).disableSelection();
-    $(notoncall_html).sortable({
-      connectWith: oncall_html,
-      placeholder: "ui-state-highlight",
-      containment: $(notoncall_html).parent()
-    }).disableSelection();
+function set_up_schedule() {
+    /* TODO: Update team members? */
+    $.getJSON('/api/v1/teams/'+global.team+'/schedule', function( data ) {
+        var schedule = data['schedule'];
+
+        /*make a hash of usernames*/
+        var team_hash = {};
+        $.each(global.team_members, function(num, member) { team_hash[member[0]] = {id:member[0], name:member[1]} });
+
+        $.each( global.roles, function(num, role) {
+            /*copy team members for each role*/
+            var role_team_members = $.extend({}, team_hash);
+            var in_rotation = [];
+            var not_rotation = [];
+
+            /*generate member list for team members in rotation*/
+            $.each (schedule[role], function(sch_num, sch) {
+                var user = sch['user'];
+                delete role_team_members[user['id']]; /*mark user as oncall*/
+                in_rotation.push(make_schedule_member(user));
+
+            });
+            /*generate member list for not in rotation*/
+            $.each (role_team_members, function(id, user) {
+                not_rotation.push(make_schedule_member(user));
+            });
+            // console.log(role_team_members);
+            // console.log(in_rotation);
+            // console.log(not_rotation);
+
+            /*selection CSS*/
+            var rotation_sel = '#'+role+'_rotation';
+            var notoncall_sel = '#'+role+'_notoncall';
+
+            $(rotation_sel).text(role);
+            $(notoncall_sel).text("Not in rotation");
+            $(rotation_sel).append(in_rotation);
+            $(notoncall_sel).append(not_rotation);
+
+            /*set up jquery sortable*/
+            $(rotation_sel).sortable({
+                connectWith: notoncall_sel,
+                placeholder: "ui-state-highlight",
+                items: "li:not(.team_member_placeholder)",
+                containment: $(rotation_sel).parent()
+            }).disableSelection();
+            $(notoncall_sel).sortable({
+                connectWith: rotation_sel,
+                placeholder: "ui-state-highlight",
+                containment: $(notoncall_sel).parent()
+            }).disableSelection();
+        });
+    });
 }
 
 function open_oncall_order_dialog() {
-    set_up_oncall_order('Primary',
-                        "#primary_oncall",
-                        "#primary_notoncall");
-    set_up_oncall_order('Secondary',
-                        "#secondary_oncall",
-                        "#secondary_notoncall");
-
+    set_up_schedule();
     $('#oncallOrderModal').modal('show');
 }
 
