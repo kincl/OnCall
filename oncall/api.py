@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, abort, request, jsonify, Response
+from flask import Blueprint, current_app, abort, request, jsonify, Response, flash
 
 import json
 
@@ -28,7 +28,6 @@ def _update_object_model(model, instance):
         setattr(instance, key, value)
 
 
-# TODO: not needed?
 def _str_to_date(date_str):
     """ converts string of 2014-04-13 to Python date """
     return date(*[int(n) for n in str(date_str).split('-')])
@@ -168,6 +167,7 @@ def teams():
 
     if request.method == 'POST':
         if not request.json or not 'team' in request.json:
+            flash('Malformed request, "team" not found in JSON', 'danger')
             abort(400)
         current_app.db.session.add(Team(request.json.get('team')))
 
@@ -183,6 +183,7 @@ def teams_team(team_slug):
 
     if request.method == 'PUT':
         if not request.json:
+            flash('Malformed request, no JSON', 'danger')
             abort(400)
         _update_object_model(Team, team)
 
@@ -205,6 +206,7 @@ def teams_members(team_slug):
 
     if request.method == 'PUT':
         if not request.json or not 'members' in request.json:
+            flash('Malformd request, "members" not found in JSON', 'danger')
             abort(400)
         team.users = [User.query.filter_by(username=u).first_or_404() for u in request.json.get('members')]
 
@@ -235,6 +237,7 @@ def teams_schedule(team_slug):
 
     if request.method == 'PUT':
         if not request.json or not 'schedule' in request.json:
+            flash('Malformd request, "schedule" not found in JSON', 'danger')
             abort(400)
         sched = request.json.get('schedule')
 
@@ -246,11 +249,13 @@ def teams_schedule(team_slug):
 
         for role in [role for role in ROLES]:
             if role not in sched:
+                flash('Malformd request, specified role is not found', 'danger')
                 abort(400)
             if max_len == -1:
                 max_len = len(sched.get(role))
             else:
                 if len(sched.get(role)) != max_len:
+                    flash('Schedules for each role must match length', 'danger')
                     abort(400)
 
             for seq in sched.get(role):
@@ -332,6 +337,8 @@ def teams_on_call(team_slug):
                          ROLES[0] if events == [] else _other_role(events[0].role),
                          _str_to_date(request.json.get('start')))
             current_app.db.session.add(newe)
+        else:
+            flash('Cannot add event, maximum for day has been reached', 'danger')
 
     # TODO: Return status and result of action
     current_app.db.session.commit()
@@ -370,19 +377,18 @@ def teams_on_call_events_event(team_slug, eventid):
                               start,
                               end,
                               exclude_event=eventid):
-                if _is_role_valid(eventid,
-                                  e.role,
-                                  start,
-                                  end):
-                    e.start = _str_to_date(start)
-                    e.end = _str_to_date(end)
-                elif _is_role_valid(eventid,
-                                    _other_role(e.role),
-                                    start,
-                                    end):
-                    e.start = _str_to_date(start)
-                    e.end = _str_to_date(end)
+                e.start = _str_to_date(start)
+                e.end = _str_to_date(end)
+
+                # If role is already taken, switch event to other role
+                if not _is_role_valid(eventid,
+                                      e.role,
+                                      start,
+                                      end):
                     e.role = _other_role(e.role)
+            else:
+                flash('Cannot add event, maximum for day has been reached', 'danger')
+
 
         # TODO: need much better error checking here, any role is valid!
         if request.json.get('role'):
@@ -390,8 +396,8 @@ def teams_on_call_events_event(team_slug, eventid):
             if _is_role_valid(eventid, request.json.get('role')):
                 e.role = request.json.get('role')
 
-        # TODO: Need error checking here!
         if request.json.get('user_username'):
+            User.query.filter_by(username=request.json.get('user_username')).first_or_404()
             e.user_username = request.json.get('user_username')
 
     if request.method == 'DELETE':
@@ -409,6 +415,7 @@ def users():
 
     if request.method == 'POST':
         if not request.json or not 'username' in request.json or not 'name' in request.json: # TODO fixme
+            flash('problem')
             abort(400)
         current_app.db.session.add(User(request.json.get('username'), request.json.get('name')))
 
@@ -424,6 +431,7 @@ def users_user(username):
 
     if request.method == 'PUT':
         if not request.json:
+            flash('problem')
             abort(400)
         # TODO: hax?
         if 'teams' in request.json:

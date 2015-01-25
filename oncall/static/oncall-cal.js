@@ -20,6 +20,7 @@ function formatDate(d) {
 function modify_event_by_id(event_id) {
     $.ajax({
         type: 'PUT',
+        async: false,
         url: '/api/v1/teams/'+global.team+'/events/'+event_id,
         contentType: 'application/json',
         data: JSON.stringify({'user_username': $('div#menu_content #user option:selected').attr('id'),
@@ -31,6 +32,7 @@ function modify_event_by_id(event_id) {
 function delete_event_by_id(event_id) {
     $.ajax({
         type: 'DELETE',
+        async: false,
         url: '/api/v1/teams/'+global.team+'/events/'+event_id
     });
     $('#calendar').fullCalendar('refetchEvents');
@@ -40,6 +42,7 @@ function delete_event_by_id(event_id) {
 function updateAndRefetch(event, delta) {
     $.ajax({
         type: 'PUT',
+        async: false,
         url: '/api/v1/teams/'+global.team+'/events/'+event.id,
         contentType: 'application/json',
         data: JSON.stringify({'start': formatDate(event.start),
@@ -47,9 +50,10 @@ function updateAndRefetch(event, delta) {
                               'username': $(this).attr('id')})
     });
     $('#calendar').fullCalendar('refetchEvents');
+    get_flashes();
 }
 
-function updateOncall() {
+function update_schedule() {
     var primary = [];
     var secondary = [];
     //var team_id = $('select#team option:selected').attr('id');
@@ -58,12 +62,12 @@ function updateOncall() {
     $('ul#Secondary_rotation li:not(.team_member_placeholder)').each(function(k, v) { secondary.push([k,$(v).attr('id')]); });
     $.ajax({
         type: 'PUT',
+        async: false,
         url: '/api/v1/teams/'+global.team+'/schedule',
         contentType: 'application/json',
         data: JSON.stringify({'schedule': {'Primary': primary,
                                            'Secondary': secondary}}),
-
-        success: function(data, status) {
+        complete: function(data, status) {
             $('#oncallOrderModal').modal('hide');
             get_flashes();
         }
@@ -273,19 +277,24 @@ function select_team(slug, update_calendar) {
 
 function get_flashes() {
     // get flashes and put in #flash-drawer
-    $('#flash-drawer').html('');
-    $.getJSON( "/user/getFlashes", function( data ) {
-        $.each(data, function( key, val ) {
-            var category = val[0] == 'message' ? 'info' :  val[0];
-            var message = val[1];
-            var alert = $('<div data-dismiss="alert" role="alert"/>')
-                .attr('class', 'alert alert-'+category+' alert-dismissible')
-                .append($('<button type="button" class="close"/>')
-                    .html('<span aria-hidden="true">&times;</span><span class="sr-only">Close</span>'))
-                .append(message);
+    //$('#flash-drawer').html('');
+    $.ajax({
+        url: "/user/getFlashes",
+        dataType: "json",
+        async: false, /*Needs to be synchronous so browser properly sets cookie*/
+        success: function( data ) {
+            $.each(data, function( key, val ) {
+                var category = val[0] == 'message' ? 'info' :  val[0];
+                var message = val[1];
+                var alert = $('<div data-dismiss="alert" role="alert"/>')
+                    .attr('class', 'alert alert-'+category+' alert-dismissible')
+                    .append($('<button type="button" class="close"/>')
+                        .html('<span aria-hidden="true">&times;</span><span class="sr-only">Close</span>'))
+                    .append(message);
 
-            $('#flash-drawer').append(alert);
-        });
+                $('#flash-drawer').append(alert);
+            });
+        }
     });
 }
 
@@ -343,7 +352,7 @@ $(document).ready(function() {
         select_team(data['primary_team'], false);
     });
 
-    get_flashes(); // TODO combine json req with user state?
+    get_flashes();
 
     // get roles and add to global variable
     $.getJSON( "/api/v1/roles", function( data ) {
@@ -362,11 +371,17 @@ $(document).ready(function() {
         eventResize: updateAndRefetch,
 
         drop: function(date, allDay) { // this function is called when something is dropped
-            $.post('/'+global.team+'/event',
-                   {'start': formatDate(date),
-                    'username': $(this).attr('id')});
+            $.ajax({
+                type: 'POST',
+                url: '/api/v1/teams/'+global.team+'/events',
+                async: false,
+                contentType: 'application/json',
+                data: JSON.stringify({'start': formatDate(date),
+                                      'username': $(this).attr('id')})
+            });
 
             $('#calendar').fullCalendar('refetchEvents');
+            get_flashes();
         },
 
         loading: function(bool) {
