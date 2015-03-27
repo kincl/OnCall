@@ -64,7 +64,7 @@ def rotate_oncall():
 
     for team in Team.query.all():
         currently_oncall = {}
-        for role in ROLES:
+        for role in app.config['ROLES']:
             oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
             for oo in oncall:
                 oo.order = (oo.order - 1) % len(oncall)
@@ -82,7 +82,7 @@ def rotate_oncall():
             current_date_roles = []
             for e in _filter_events_by_date(real_events, current_date):
                 current_date_roles.append(e.role)
-            for role in ROLES:
+            for role in app.config['ROLES']:
                 if role in current_date_roles:
                     if build_events.get(role, None):
                         db.session.add(build_events.get(role))
@@ -172,7 +172,7 @@ def current_oncall():
             current_team[order.role] = order.user
         for event in _get_events_for_dates(team.slug, date.today(), date.today()):
             current_team[event.role] = event.user
-    return render_template('list.html', oncall=current_oncall, roles=ROLES)
+    return render_template('list.html', oncall=current_oncall, roles=app.config['ROLES'])
 
 
 @app.route('/calendar')
