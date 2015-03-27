@@ -11,7 +11,7 @@ class User(db.Model):
     __tablename__ = 'users'
     username = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
-    primary_team = db.Column(db.String(200), db.ForeignKey('teams.slug'))
+    primary_team = db.Column(db.String(200), db.ForeignKey('teams.slug'), nullable=True)
     contact_card = db.Column(db.Text())
     # Not sure why I had this??
     # teams = db.relationship('Team',
@@ -35,29 +35,26 @@ class User(db.Model):
         '''
         username - username
         name - name
-        teams - team1,team2
+        teams - [team1,team2]
         '''
         self.username = username
         self.name = name
         self.set_teams(teams)
-        if teams:
-            self.primary_team = self.teams[0]
+        if len(self.teams) != 0:
+            self.primary_team = self.teams[0].slug
         else:
             self.primary_team = None
         self.contact_card = ''
-
+        
     # TODO: Need to decide how to handle appends and single deletes?
-    def set_teams(self, teams):
-        new_teams = []
-        # TODO: HAX?
-        if isinstance(teams, str):
-            teams = teams.split(',')
-        if teams is None:
-            teams = []
+    def set_teams(self, myteams):
+        self.teams = []
 
-        for team in teams:
-            new_teams.append(Team.query.filter_by(slug = team).first())
-        self.teams = new_teams
+        for team in myteams:
+            # TODO: error checking if no team comes back
+            add = Team.query.filter_by(slug = team).one()
+            self.teams.append(add)
+
 
     def to_json(self):
         return dict(name=self.name, id=self.username, teams=[t.slug for t in self.teams])
