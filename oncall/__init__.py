@@ -145,7 +145,6 @@ def login():
 
         if password_bind:
             login_user(user)
-            flash('Logged in successfully', 'success')
             return redirect(request.args.get('next') or '/')
         else:
             flash('Invalid login', 'danger')
@@ -217,6 +216,5 @@ def user_update_prefs():
         current_user.contact_card = request.form.get('contact_card')
         current_user.set_teams(request.form.getlist('teams'))
         db.session.commit()
-        flash('Updated profile')
         return Response(json.dumps({'result': 'success'}),
                         mimetype='application/json')
