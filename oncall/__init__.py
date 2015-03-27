@@ -1,19 +1,17 @@
+import os
+import ldap
+from copy import deepcopy
+from datetime import date, timedelta, datetime
+
 from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages, jsonify
+
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
-
 from flask.ext.simpleldap import LDAP
-import ldap
-
-from datetime import date, timedelta, datetime
-from copy import deepcopy
 
 from forms import LoginForm, UpdateProfileForm
 
-import os
-
 app = Flask(__name__)
-
 db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, OncallOrder, Cron
 app.db = db
@@ -21,16 +19,11 @@ app.db = db
 from oncall.api import api
 app.register_blueprint(api, url_prefix='/api/v1')
 
+from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_events_for_dates
+
 app.config.from_object('oncall.settings')
 if 'ONCALLAPP_SETTINGS' in os.environ:
     app.config.from_envvar('ONCALLAPP_SETTINGS')
-
-
-
-ROLES = ['Primary',
-         'Secondary']
-ONCALL_START = 1
-ONE_DAY = timedelta(1)
 
 login_manager = LoginManager()
 login_manager.login_view = '/login'
@@ -40,45 +33,6 @@ login_manager.init_app(app)
 @login_manager.user_loader
 def load_user(userid):
     return User.query.filter_by(username=userid).first()
-
-# for schedule order rotate
-def _get_monday(date):
-    if date.isoweekday() == ONCALL_START:
-        return date
-    else:
-        return _get_monday(date - ONE_DAY)
-
-
-def _filter_events_by_date(events, filter_date):
-    return_events = []
-    for event in events:
-        if filter_date >= event.start and filter_date <= event.end:
-            return_events.append(event)
-    return return_events
-
-
-def _str_to_date(date_str):
-    """ converts string of 2014-04-13 to Python date """
-    return date(*[int(n) for n in str(date_str).split('-')])
-
-
-def _get_events_for_dates(team, start_date, end_date, exclude_event=None):
-    start = _str_to_date(start_date)
-    end = _str_to_date(end_date if end_date else start_date)
-    events_start = Event.query.filter(start >= Event.start,
-                                      start <= Event.end,
-                                      Event.id != exclude_event,
-                                      Event.team_slug == team)
-    events_end = Event.query.filter(end >= Event.start,
-                                    end <= Event.end,
-                                    Event.id != exclude_event,
-                                    Event.team_slug == team)
-    events_inside = Event.query.filter(start <= Event.start,
-                                       end >= Event.end,
-                                       Event.id != exclude_event,
-                                       Event.team_slug == team)
-
-    return events_start.union(events_end, events_inside).all()
 
 
 @app.before_request
