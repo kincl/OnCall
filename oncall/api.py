@@ -406,6 +406,8 @@ def teams_on_call_events_event(team_slug, eventid):
         if request.json.get('role'):
             if _is_role_valid(eventid, request.json.get('role')):
                 e.role = request.json.get('role')
+            else:
+                return _api_error('Cannot add event, maximum for day has been reached', 'danger')
 
         if request.json.get('user_username'):
             User.query.filter_by(username=request.json.get('user_username')).first_or_404()

@@ -71,7 +71,8 @@ function update_schedule() {
                                            'Secondary': secondary}}),
         complete: function(data, status) {
             $('#oncallOrderModal').modal('hide');
-        }
+        },
+        error: handle_ajax_error
     });
 
 }
@@ -272,32 +273,8 @@ function select_team(slug, update_calendar) {
     if (update_calendar) {
         update_calendar_team();
     }
-
 }
 
-
-function get_flashes() {
-    // get flashes and put in #flash-drawer
-    //$('#flash-drawer').html('');
-    $.ajax({
-        url: "/user/getFlashes",
-        dataType: "json",
-        async: false, /*Needs to be synchronous so browser properly sets cookie*/
-        success: function( data ) {
-            $.each(data, function( key, val ) {
-                var category = val[0] == 'message' ? 'info' :  val[0];
-                var message = val[1];
-                var alert = $('<div data-dismiss="alert" role="alert"/>')
-                    .attr('class', 'alert alert-'+category+' alert-dismissible')
-                    .append($('<button type="button" class="close"/>')
-                        .html('<span aria-hidden="true">&times;</span><span class="sr-only">Close</span>'))
-                    .append(message);
-
-                $('#flash-drawer').append(alert);
-            });
-        }
-    });
-}
 
 function handle_ajax_error(xhr, status, error) {
   var resp = JSON.parse(xhr.responseText);
@@ -308,6 +285,7 @@ function handle_ajax_error(xhr, status, error) {
       .append(resp['message']);
 
   $('#flash-drawer').append(alert);
+  global.menu.hide();
 }
 
 
@@ -476,11 +454,12 @@ $(document).ready(function() {
         $.ajax({
             type: $form.attr('method'),
             url: $form.attr('action'),
+            async: false,
             data: $form.serialize(),
-
             success: function(data, status) {
                 $('#profileModal').modal('hide');
-            }
+            },
+            error: handle_ajax_error
         });
 
         event.preventDefault();
