@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, abort, request, jsonify, Response, flash
+from flask import Blueprint, current_app, abort, request, jsonify, Response, make_response
 
 import json
 
@@ -155,6 +155,10 @@ def _get_week_dates(date):
     return monday, sunday
 
 
+def _api_error(message, category = 'warning'):
+    return Response(json.dumps({'message':message, 'category':category}), 400)
+
+
 @api.route('/')
 def help():
     return "Help about the API will go here"
@@ -167,8 +171,9 @@ def teams():
 
     if request.method == 'POST':
         if not request.json or not 'team' in request.json:
-            flash('Malformed request, "team" not found in JSON', 'danger')
-            abort(400)
+            # flash('Malformed request, "team" not found in JSON', 'danger')
+            # abort(400)
+            return _api_error('Malformed request, "team" not found in JSON', 'danger')
         current_app.db.session.add(Team(request.json.get('team')))
 
     current_app.db.session.commit()
@@ -183,8 +188,9 @@ def teams_team(team_slug):
 
     if request.method == 'PUT':
         if not request.json:
-            flash('Malformed request, no JSON', 'danger')
-            abort(400)
+            # flash('Malformed request, no JSON', 'danger')
+            # abort(400)
+            return _api_error('Malformed request, no JSON', 'danger')
         _update_object_model(Team, team)
 
     if request.method == 'DELETE':
@@ -206,8 +212,9 @@ def teams_members(team_slug):
 
     if request.method == 'PUT':
         if not request.json or not 'members' in request.json:
-            flash('Malformd request, "members" not found in JSON', 'danger')
-            abort(400)
+            # flash('Malformd request, "members" not found in JSON', 'danger')
+            # abort(400)
+            return _api_error('Malformed request, members not found in JSON', 'danger')
         team.users = [User.query.filter_by(username=u).first_or_404() for u in request.json.get('members')]
 
     if request.method == 'DELETE':
@@ -237,8 +244,9 @@ def teams_schedule(team_slug):
 
     if request.method == 'PUT':
         if not request.json or not 'schedule' in request.json:
-            flash('Malformd request, "schedule" not found in JSON', 'danger')
-            abort(400)
+            # flash('Malformd request, "schedule" not found in JSON', 'danger')
+            # abort(400)
+            return _api_error('Malformed request, schedule not found in JSON', 'danger')
         sched = request.json.get('schedule')
 
         # Maybe a better way to do this but delete all since we are doing an add all
@@ -249,14 +257,16 @@ def teams_schedule(team_slug):
 
         for role in [role for role in ROLES]:
             if role not in sched:
-                flash('Malformd request, specified role is not found', 'danger')
-                abort(400)
+                # flash('Malformd request, specified role is not found', 'danger')
+                # abort(400)
+                return _api_error('Malformed request, specified role is not found', 'danger')
             if max_len == -1:
                 max_len = len(sched.get(role))
             else:
                 if len(sched.get(role)) != max_len:
-                    flash('Schedules for each role must match length', 'danger')
-                    abort(400)
+                    # flash('Schedules for each role must match length', 'danger')
+                    # abort(400)
+                    return _api_error('Schedules for each role must match length', 'danger')
 
             for seq in sched.get(role):
                 user = User.query.filter_by(username=seq[1]).first_or_404().username
@@ -338,7 +348,8 @@ def teams_on_call(team_slug):
                          _str_to_date(request.json.get('start')))
             current_app.db.session.add(newe)
         else:
-            flash('Cannot add event, maximum for day has been reached', 'danger')
+            # flash('Cannot add event, maximum for day has been reached', 'danger')
+            return _api_error('Cannot add event, maximum for day has been reached', 'danger')
 
     # TODO: Return status and result of action
     current_app.db.session.commit()
@@ -349,6 +360,8 @@ def _is_role_valid(eventid, new_role, start_date=None, end_date=None):
     """ Can we change the of the given event to new_role, look up
         the event and see if there are any events that have that
         role already """
+    if new_role not in ROLES:
+        return False
     e = Event.query.filter_by(id=eventid).first()
     events = _get_events_for_dates(e.team_slug,
                                    start_date if start_date else e.start,
@@ -387,12 +400,10 @@ def teams_on_call_events_event(team_slug, eventid):
                                       end):
                     e.role = _other_role(e.role)
             else:
-                flash('Cannot add event, maximum for day has been reached', 'danger')
+                # flash('Cannot add event, maximum for day has been reached', 'danger')
+                return _api_error('Cannot add event, maximum for day has been reached', 'danger')
 
-
-        # TODO: need much better error checking here, any role is valid!
         if request.json.get('role'):
-            print request.json.get('role')
             if _is_role_valid(eventid, request.json.get('role')):
                 e.role = request.json.get('role')
 
@@ -415,8 +426,9 @@ def users():
 
     if request.method == 'POST':
         if not request.json or not 'username' in request.json or not 'name' in request.json: # TODO fixme
-            flash('problem')
-            abort(400)
+            # flash('problem')
+            # abort(400)
+            return _api_error('Malformed request, no username specified', 'danger')
         current_app.db.session.add(User(request.json.get('username'), request.json.get('name')))
 
     current_app.db.session.commit()
@@ -431,8 +443,9 @@ def users_user(username):
 
     if request.method == 'PUT':
         if not request.json:
-            flash('problem')
-            abort(400)
+            # flash('problem')
+            # abort(400)
+            return _api_error('Malformed request, no JSON', 'danger')
         # TODO: hax?
         if 'teams' in request.json:
             request.json['teams'] = [Team.query.filter_by(slug=t).first_or_404() for t in request.json.get('teams')]

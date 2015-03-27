@@ -24,7 +24,8 @@ function modify_event_by_id(event_id) {
         url: '/api/v1/teams/'+global.team+'/events/'+event_id,
         contentType: 'application/json',
         data: JSON.stringify({'user_username': $('div#menu_content #user option:selected').attr('id'),
-                              'role': $('div#menu_content #role option:selected').val()})
+                              'role': $('div#menu_content #role option:selected').val()}),
+        error: handle_ajax_error
     });
     $('#calendar').fullCalendar('refetchEvents');
 }
@@ -33,7 +34,8 @@ function delete_event_by_id(event_id) {
     $.ajax({
         type: 'DELETE',
         async: false,
-        url: '/api/v1/teams/'+global.team+'/events/'+event_id
+        url: '/api/v1/teams/'+global.team+'/events/'+event_id,
+        error: handle_ajax_error
     });
     $('#calendar').fullCalendar('refetchEvents');
     global.menu.hide();
@@ -47,10 +49,10 @@ function updateAndRefetch(event, delta) {
         contentType: 'application/json',
         data: JSON.stringify({'start': formatDate(event.start),
                               'end': formatDate(event.end),
-                              'username': $(this).attr('id')})
+                              'username': $(this).attr('id')}),
+        error: handle_ajax_error
     });
     $('#calendar').fullCalendar('refetchEvents');
-    get_flashes();
 }
 
 function update_schedule() {
@@ -69,7 +71,6 @@ function update_schedule() {
                                            'Secondary': secondary}}),
         complete: function(data, status) {
             $('#oncallOrderModal').modal('hide');
-            get_flashes();
         }
     });
 
@@ -298,6 +299,17 @@ function get_flashes() {
     });
 }
 
+function handle_ajax_error(xhr, status, error) {
+  var resp = JSON.parse(xhr.responseText);
+  var alert = $('<div data-dismiss="alert" role="alert"/>')
+      .attr('class', 'alert alert-'+resp['category']+' alert-dismissible')
+      .append($('<button type="button" class="close"/>')
+          .html('<span aria-hidden="true">&times;</span><span class="sr-only">Close</span>'))
+      .append(resp['message']);
+
+  $('#flash-drawer').append(alert);
+}
+
 
 $(document).ready(function() {
 
@@ -352,8 +364,6 @@ $(document).ready(function() {
         select_team(data['primary_team'], false);
     });
 
-    get_flashes();
-
     // get roles and add to global variable
     $.getJSON( "/api/v1/roles", function( data ) {
         global.roles = data['roles'];
@@ -377,11 +387,11 @@ $(document).ready(function() {
                 async: false,
                 contentType: 'application/json',
                 data: JSON.stringify({'start': formatDate(date),
-                                      'username': $(this).attr('id')})
+                                      'username': $(this).attr('id')}),
+                error: handle_ajax_error
             });
 
             $('#calendar').fullCalendar('refetchEvents');
-            get_flashes();
         },
 
         loading: function(bool) {
@@ -470,8 +480,6 @@ $(document).ready(function() {
 
             success: function(data, status) {
                 $('#profileModal').modal('hide');
-                get_flashes();
-
             }
         });
 
