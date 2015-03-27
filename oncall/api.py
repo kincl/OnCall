@@ -59,7 +59,7 @@ def teams_members(team_slug):
         for u in team.users:
             members.append(u.to_json())
 
-        return jsonify({'members': members})
+        return jsonify({'members': sorted(members, key=lambda item: item['name'])})
 
     if request.method == 'PUT':
         if not request.json or not 'members' in request.json:
