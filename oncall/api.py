@@ -159,6 +159,53 @@ def _api_error(message, category = 'warning'):
     return Response(json.dumps({'message':message, 'category':category}), 400)
 
 
+def _can_add_event(team, start_date, end_date, exclude_event=None):
+    """ Given a start and end date, make sure that there are not more
+        than two events. """
+
+    events_all = _get_events_for_dates(team,
+                                       start_date,
+                                       end_date,
+                                       exclude_event)
+
+    i = _str_to_date(start_date)
+    while i != _str_to_date(end_date if end_date else start_date) + ONE_DAY:
+        count = 0
+        for e in events_all:
+            if i >= e.start and i <= e.end:
+                count += 1
+        if count >= len(ROLES):
+            return False
+        i += ONE_DAY
+    return True
+
+
+def _other_role(start_role):
+    """ Select the !this role """
+    # TODO: make it work for more than two roles
+    for role in ROLES:
+        if role != start_role:
+            return role
+
+
+def _is_role_valid(eventid, new_role, start_date=None, end_date=None):
+    """ Can we change the of the given event to new_role, look up
+        the event and see if there are any events that have that
+        role already """
+    if new_role not in ROLES:
+        return False
+    e = Event.query.filter_by(id=eventid).first()
+    events = _get_events_for_dates(e.team_slug,
+                                   start_date if start_date else e.start,
+                                   end_date if end_date else e.end,
+                                   exclude_event=eventid)
+    flag = True
+    for event in events:
+        if event.role == new_role:
+            flag = False
+    return flag
+
+
 @api.route('/')
 def help():
     return "Help about the API will go here"
@@ -280,35 +327,6 @@ def teams_schedule(team_slug):
     return Response(status=200)
 
 
-def _can_add_event(team, start_date, end_date, exclude_event=None):
-    """ Given a start and end date, make sure that there are not more
-        than two events. """
-
-    events_all = _get_events_for_dates(team,
-                                       start_date,
-                                       end_date,
-                                       exclude_event)
-
-    i = _str_to_date(start_date)
-    while i != _str_to_date(end_date if end_date else start_date) + ONE_DAY:
-        count = 0
-        for e in events_all:
-            if i >= e.start and i <= e.end:
-                count += 1
-        if count >= len(ROLES):
-            return False
-        i += ONE_DAY
-    return True
-
-
-def _other_role(start_role):
-    """ Select the !this role """
-    # TODO: make it work for more than two roles
-    for role in ROLES:
-        if role != start_role:
-            return role
-
-
 @api.route('/teams/<team_slug>/events', methods = ['GET', 'POST'])
 def teams_on_call(team_slug):
     """
@@ -354,24 +372,6 @@ def teams_on_call(team_slug):
     # TODO: Return status and result of action
     current_app.db.session.commit()
     return Response(status=200)
-
-
-def _is_role_valid(eventid, new_role, start_date=None, end_date=None):
-    """ Can we change the of the given event to new_role, look up
-        the event and see if there are any events that have that
-        role already """
-    if new_role not in ROLES:
-        return False
-    e = Event.query.filter_by(id=eventid).first()
-    events = _get_events_for_dates(e.team_slug,
-                                   start_date if start_date else e.start,
-                                   end_date if end_date else e.end,
-                                   exclude_event=eventid)
-    flag = True
-    for event in events:
-        if event.role == new_role:
-            flag = False
-    return flag
 
 
 @api.route('/teams/<team_slug>/events/<eventid>', methods = ['GET', 'PUT', 'DELETE'])
