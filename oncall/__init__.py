@@ -21,7 +21,7 @@ app.register_blueprint(api, url_prefix='/api/v1')
 
 from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_events_for_dates
 
-app.config.from_object('oncall.settings')
+app.config.from_object('oncall.settings.Defaults')
 if 'ONCALLAPP_SETTINGS' in os.environ:
     app.config.from_envvar('ONCALLAPP_SETTINGS')
 
