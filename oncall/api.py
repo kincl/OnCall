@@ -42,7 +42,8 @@ def teams_team(team_slug):
             # flash('Malformed request, no JSON', 'danger')
             # abort(400)
             return _api_error('Malformed request, no JSON', 'danger')
-        _update_object_model(Team, team)
+        if not _update_object_model(Team, team):
+            return _api_error('Key not in model', 'danger')
 
     if request.method == 'DELETE':
         current_app.db.session.delete(team)
@@ -255,7 +256,8 @@ def users_user(username):
         # TODO: hax?
         if 'teams' in request.json:
             request.json['teams'] = [Team.query.filter_by(slug=t).first_or_404() for t in request.json.get('teams')]
-        _update_object_model(User, user)
+        if not _update_object_model(User, user):
+            return _api_error('Key not in model', 'danger')
 
     if request.method == 'DELETE':
         current_app.db.session.delete(user)

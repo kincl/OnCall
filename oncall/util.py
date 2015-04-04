@@ -2,7 +2,7 @@ import os
 import json
 from copy import deepcopy
 from datetime import date, timedelta
-from flask import current_app, Response
+from flask import current_app, request, Response
 
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
@@ -15,8 +15,9 @@ def _update_object_model(model, instance):
     # Make sure we have a key that is an attribute of the model
     for key, value in request.json.items():
         if not isinstance(model.__dict__.get(key), InstrumentedAttribute):
-            return Response('Key: {0} not in model'.format(key), status=500)
+            return False
         setattr(instance, key, value)
+    return True
 
 
 def _str_to_date(date_str):
