@@ -1,7 +1,7 @@
 import os
 import unittest
-import urllib2
-from flask.ext.testing import TestCase,LiveServerTestCase
+import json
+from flask.ext.testing import TestCase
 
 from oncall import app, db
 
@@ -39,10 +39,37 @@ class OncallTesting(TestCase):
         db.session.remove()
         db.drop_all()
 
-    def test_get_teams(self):
-        response = self.client.get('/api/v1/teams')
+    def test_get_oncall_index(self):
+        rv = self.client.get('/')
 
-        assert 'teams' in response.json
+        assert 'Team 1' in rv.data
+
+    def test_teams_get_post(self):
+        # -- get
+        rv = self.client.get('/api/v1/teams')
+        self.assert200(rv)
+        assert 'teams' in rv.json
+
+        # -- post
+        newteam = {'team':'Team 3'}
+        self.assert200(self.client.post('/api/v1/teams', content_type='application/json', data=json.dumps(newteam)))
+
+        rv = self.client.get('/api/v1/teams/team-3')
+        assert 'team-3' in rv.data
+
+    def test_team_get_put_delete(self):
+        # -- get
+        self.assert200(self.client.get('/api/v1/teams/team-1'))
+
+        # -- put
+        updateteam = {'name': 'TEAM 1 CHANGED'}
+        self.client.put('/api/v1/teams/team-1', content_type='application/json', data=json.dumps(updateteam))
+        rv = self.client.get('/api/v1/teams/team-1')
+        assert 'TEAM 1 CHANGED' in rv.data
+
+        # -- delete
+        self.client.delete('/api/v1/teams/team-1')
+        self.assert404(self.client.get('/api/v1/teams/team-1'))
 
 if __name__ == '__main__':
     unittest.main()
