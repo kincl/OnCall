@@ -3,7 +3,6 @@ import unittest
 import json
 from flask.ext.testing import TestCase
 
-from mock import patch
 from ldap_test import LdapServer
 from ldap3 import Server, Connection
 
