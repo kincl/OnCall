@@ -1,5 +1,4 @@
 import os
-import ldap
 from copy import deepcopy
 from datetime import date, timedelta, datetime
 
@@ -15,6 +14,7 @@ db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, OncallOrder, Cron
 app.db = db
 
+from oncall.ldap_helper import bind
 from oncall.api import api
 app.register_blueprint(api, url_prefix='/api/v1')
 
@@ -128,19 +128,7 @@ def login():
             # if app.debug:
             #     password_bind = True
 
-            try:
-                conn = ldap.initialize('{0}://{1}:{2}'.format(
-                'ldap',
-                app.config['LDAP_HOST'],
-                app.config['LDAP_PORT']))
-                conn.protocol_version = ldap.VERSION3
-
-                password_bind = conn.simple_bind_s(
-                                    'uid={0},{1}'.format(request.form.get('username'),
-                                                         app.config['LDAP_BASE_DN']),
-                                    request.form.get('password'))
-            except ldap.LDAPError as e:
-                flash('LDAP error {0}'.format(e), 'danger')
+            password_bind = bind(request.form.get('username'), request.form.get('password'))
 
         if password_bind:
             login_user(user)
