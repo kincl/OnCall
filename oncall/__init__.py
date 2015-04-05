@@ -7,7 +7,6 @@ from flask import Flask, request, render_template, json, Response, session, redi
 
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.simpleldap import LDAP
 
 from forms import LoginForm, UpdateProfileForm
 

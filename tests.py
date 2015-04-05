@@ -3,9 +3,47 @@ import unittest
 import json
 from flask.ext.testing import TestCase
 
-from oncall import app, db
+from mock import patch
+from ldap_test import LdapServer
+from ldap3 import Server, Connection
 
+from oncall import app, db, ldap_helper
 from oncall.models import Team, User
+
+_ldap_server = LdapServer({
+    'bind_dn': 'cn=admin,dc=example,dc=com',
+    'password': 'pass1',
+    'base': {'objectclass': ['top', 'organization', 'dcObject'],
+             'dn': 'dc=example,dc=com',
+             'attributes': {'dc': 'example'}},
+    'entries': [
+        {'objectclass': 'organizationalUnit',
+         'dn': 'ou=People,dc=example,dc=com',
+         'attributes': {'ou': 'People'}},
+        {'objectclass': ['person', 'inetOrgPerson', 'organizationalPerson', 'posixAccount', 'top'],
+         'dn': 'uid=user,ou=People,dc=example,dc=com',
+         'attributes': {'uid': 'user',
+                        'loginShell': '/bin/bash',
+                        'gecos': 'User Example',
+                        'userPassword': 'chevron',
+                        'givenName': 'User',
+                        'cn': 'User',
+                        'sn': 'Example',
+                        'mail': 'user@example.com',
+                        'ou': 'People',
+                        'uidNumber': '501',
+                        'gidNumber': '1000'}},
+    ]
+})
+
+def ldap_get_conn():
+    dn = _ldap_server.config['bind_dn']
+    pw = _ldap_server.config['password']
+
+    srv = Server('localhost', port=_ldap_server.config['port'])
+    conn = Connection(srv, user=dn, password=pw, auto_bind=True)
+    return conn
+
 
 class OncallTesting(TestCase):
 
@@ -13,6 +51,10 @@ class OncallTesting(TestCase):
         # set up testing config
         app.config['TESTING'] = True
         app.config['SECRET_KEY'] = 'testing'
+        app.config['LDAP_HOST'] = 'dummy'
+        app.config['LDAP_PORT'] = 'dummy'
+        app.config['LDAP_BASE_DN'] = 'dc=example,dc=com'
+        app.config['LDAP_PEOPLE_OU'] = 'ou=People'
 
         return app
 
@@ -35,9 +77,15 @@ class OncallTesting(TestCase):
         db.session.add(user4)
         db.session.commit()
 
+        _ldap_server.start()
+        # monkey patch our connection helper
+        ldap_helper.get_conn = ldap_get_conn
+
     def tearDown(self):
         db.session.remove()
         db.drop_all()
+
+        _ldap_server.stop()
 
     def test_get_oncall_index(self):
         rv = self.client.get('/')
@@ -70,6 +118,14 @@ class OncallTesting(TestCase):
         # -- delete
         self.client.delete('/api/v1/teams/team-1')
         self.assert404(self.client.get('/api/v1/teams/team-1'))
+
+    def test_ldap(self):
+        rv = ldap_helper.search('(uid=user)', ['uid', 'cn'])
+        assert 'uid=user,ou=People,dc=example,dc=com' in rv[0].values()
+
+    def test_ldap_bind(self):
+        bind = ldap_helper.bind('user', 'chevron')
+        assert bind is True
 
 if __name__ == '__main__':
     unittest.main()
