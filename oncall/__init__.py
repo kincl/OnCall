@@ -16,9 +16,6 @@ import logging.handlers
 syslog = logging.handlers.SysLogHandler("/dev/log")
 syslog.setFormatter(logging.Formatter("%(name)s: %(message)s"))
 app.logger.addHandler(syslog)
-file = logging.FileHandler('/var/log/oncall.log')
-file.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-app.logger.addHandler(file)
 
 db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, Schedule, Cron
@@ -32,6 +29,11 @@ from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_
 app.config.from_object('oncall.settings.Defaults')
 if 'ONCALLAPP_SETTINGS' in os.environ:
     app.config.from_envvar('ONCALLAPP_SETTINGS')
+
+if app.config['LOG_FILE']:
+    file = logging.FileHandler(app.config['LOG_FILE'])
+    file.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    app.logger.addHandler(file)
 
 app.logger.info("Config file at {0}".format(os.environ['ONCALLAPP_SETTINGS']))
 
@@ -49,6 +51,8 @@ def load_user(userid):
 def load_user_from_request(request):
     api_key = request.args.get('api_key')
     if api_key:
+        if api_key == app.config['ADMIN_TOKEN']:
+            return User('AdminToken', 'Admin Token')
         user = User.query.filter_by(api_key=api_key).first()
         if user:
             return user

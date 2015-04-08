@@ -5,3 +5,4 @@ class Defaults(object):
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
     ROLES = ['Primary','Secondary']
     ONCALL_START = 1
+    LOG_FILE = False
