@@ -97,6 +97,7 @@ class OncallTesting(TestCase):
         app.config['LDAP_PEOPLE_OU'] = 'ou=People'
 
         app.config['LDAP_SYNC_USER_FILTER'] = '(objectClass=person)'
+        app.config['LDAP_SYNC_TEAM_FILTER'] = '(objectClass=posixGroup)'
 
         return app
 

@@ -8,8 +8,8 @@ from oncall.models import User, Team
 # so we can monkey patch for
 def get_conn():
     # define the server and the connection
-    s = Server('localhost', port = 389, get_info = ALL)  # define an unsecure LDAP server, requesting info on DSE and schema
-    c = Connection(s, auto_bind = False, client_strategy = SYNC, check_names=True)
+    s = Server(current_app.config['LDAP_HOST'], port = current_app.config['LDAP_PORT'], get_info = ALL)  # define an unsecure LDAP server, requesting info on DSE and schema
+    c = Connection(s, auto_bind = True, client_strategy = SYNC, check_names=True)
     #print(s.info) # display info from the DSE. OID are decoded when recognized by the library
     return c
 
@@ -29,26 +29,33 @@ def search(filter, attributes):
     return r
 
 def sync_users():
-    ldap_users = search('(objectClass=person)', ['uid', 'cn', 'sn', 'gecos'])
+    ldap_users = search(current_app.config['LDAP_SYNC_USER_FILTER'], ['uid', 'gecos'])
 
     for user in ldap_users:
+        if type(user['attributes']['gecos']) is list:
+            fullname = ''.join(user['attributes']['gecos'])
+        else:
+            fullname = user['attributes']['gecos']
+
         found_user = User.query.filter_by(username=user['attributes']['uid'][0]).first()
         if isinstance(found_user, User):
             current_app.logger.info('Updating user: {0}'.format(found_user.username))
-            found_user.name = user['attributes']['gecos'][0]
+            found_user.name = fullname
         else:
             uid = user['attributes']['uid'][0]
             current_app.logger.info('Creating user: {0}'.format(uid))
-            current_app.db.session.add(User(uid, user['attributes']['gecos'][0]))
+            current_app.db.session.add(User(uid, fullname))
 
     current_app.db.session.commit()
 
 def sync_teams():
-    ldap_groups = search('(objectClass=posixGroup)', ['cn', 'memberUid'])
+    ldap_groups = search(current_app.config['LDAP_SYNC_GROUP_FILTER'], ['cn', 'memberUid'])
 
     for group in ldap_groups:
-        team = Team.query.filter_by(slug=group['attributes']['cn'][0]).first()
-        # if team already exists, update users
+        group_name = group['attributes']['cn'][0]
+
+        team = Team.query.filter_by(name=group_name).first()
+        # if team already exists, replace users
         if isinstance(team, Team):
             team.users = []
             for uid in group['attributes']['memberUid']:
@@ -57,7 +64,7 @@ def sync_teams():
                     team.users.append(user)
         # create the team and add the users
         else:
-            team = Team(group['attributes']['cn'][0])
+            team = Team(group_name)
             team.users = []
             for uid in group['attributes']['memberUid']:
                 user = User.query.filter_by(username=uid).first()
