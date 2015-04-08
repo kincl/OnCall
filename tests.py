@@ -17,20 +17,57 @@ _ldap_server = LdapServer({
              'attributes': {'dc': 'example'}},
     'entries': [
         {'objectclass': 'organizationalUnit',
+         'dn': 'ou=Groups,dc=example,dc=com',
+         'attributes': {'ou': 'Groups'}},
+        {'objectclass': ['posixGroup'],
+         'dn': 'cn=testgroup,ou=Groups,dc=example,dc=com',
+         'attributes':{'cn': 'testgroup',
+                       'memberUid': ['ldap_user1', 'user2']}},
+         {'objectclass': ['posixGroup'],
+          'dn': 'cn=team-1,ou=Groups,dc=example,dc=com',
+          'attributes': {'cn': 'team-1',
+                         'memberUid': ['ldap_user1', 'ldap_user2', 'user2']}},
+        {'objectclass': 'organizationalUnit',
          'dn': 'ou=People,dc=example,dc=com',
          'attributes': {'ou': 'People'}},
         {'objectclass': ['person', 'inetOrgPerson', 'organizationalPerson', 'posixAccount', 'top'],
-         'dn': 'uid=user,ou=People,dc=example,dc=com',
-         'attributes': {'uid': 'user',
+         'dn': 'uid=ldap_user1,ou=People,dc=example,dc=com',
+         'attributes': {'uid': 'ldap_user1',
+                        'loginShell': '/bin/bash',
+                        'gecos': 'Ldap User1',
+                        'userPassword': 'chevron',
+                        'givenName': 'Ldap',
+                        'cn': 'Ldap',
+                        'sn': 'User1',
+                        'mail': 'ldap_user1@example.com',
+                        'ou': 'People',
+                        'uidNumber': '501',
+                        'gidNumber': '1000'}},
+        {'objectclass': ['person', 'inetOrgPerson', 'organizationalPerson', 'posixAccount', 'top'],
+         'dn': 'uid=user2,ou=People,dc=example,dc=com',
+         'attributes': {'uid': 'user2',
                         'loginShell': '/bin/bash',
                         'gecos': 'User Example',
                         'userPassword': 'chevron',
-                        'givenName': 'User',
-                        'cn': 'User',
+                        'givenName': 'User2',
+                        'cn': 'User2',
                         'sn': 'Example',
-                        'mail': 'user@example.com',
+                        'mail': 'user2@example.com',
                         'ou': 'People',
-                        'uidNumber': '501',
+                        'uidNumber': '503',
+                        'gidNumber': '1000'}},
+        {'objectclass': ['person', 'inetOrgPerson', 'organizationalPerson', 'posixAccount', 'top'],
+         'dn': 'uid=ldap_user2,ou=People,dc=example,dc=com',
+         'attributes': {'uid': 'ldap_user2',
+                        'loginShell': '/bin/bash',
+                        'gecos': 'Ldap User2',
+                        'userPassword': 'chevron',
+                        'givenName': 'Ldap',
+                        'cn': 'Ldap',
+                        'sn': 'User2',
+                        'mail': 'ldap_user2@example.com',
+                        'ou': 'People',
+                        'uidNumber': '502',
                         'gidNumber': '1000'}},
     ]
 })
@@ -54,6 +91,8 @@ class OncallTesting(TestCase):
         app.config['LDAP_PORT'] = 'dummy'
         app.config['LDAP_BASE_DN'] = 'dc=example,dc=com'
         app.config['LDAP_PEOPLE_OU'] = 'ou=People'
+
+        app.config['LDAP_SYNC_USER_FILTER'] = '(objectClass=person)'
 
         return app
 
@@ -119,12 +158,21 @@ class OncallTesting(TestCase):
         self.assert404(self.client.get('/api/v1/teams/team-1'))
 
     def test_ldap(self):
-        rv = ldap_helper.search('(uid=user)', ['uid', 'cn'])
-        assert 'uid=user,ou=People,dc=example,dc=com' in rv[0].values()
+        rv = ldap_helper.search('(uid=user2)', ['uid', 'cn'])
+        assert 'uid=user2,ou=People,dc=example,dc=com' in rv[0].values()
 
     def test_ldap_bind(self):
-        bind = ldap_helper.bind('user', 'chevron')
+        bind = ldap_helper.bind('user2', 'chevron')
         assert bind is True
+
+    def test_ldap_sync(self):
+        ldap_helper.sync_users()
+        assert User.query.filter_by(username="ldap_user1").first() is not None
+
+        ldap_helper.sync_teams()
+        assert 'ldap_user1' in [u.username for u in Team.query.filter_by(slug='team-1').first().users]
+        self.assert200(self.client.get('/api/v1/teams/testgroup'))
+        
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,6 +3,8 @@ from ldap3 import Server, Connection, SIMPLE, SYNC, ASYNC, SUBTREE, ALL
 
 from flask import current_app
 
+from oncall.models import User, Team
+
 # so we can monkey patch for
 def get_conn():
     # define the server and the connection
@@ -23,12 +25,47 @@ def search(filter, attributes):
     c = get_conn()
 
     c.search(current_app.config['LDAP_BASE_DN'], filter, SUBTREE, attributes = attributes)
-    # response = c.response
-    # result = c.result
-    # for r in response:
-    #     print(r['dn'], r['attributes']) # return unicode attributes
-    #     #print(r['dn'], r['raw_attributes']) # return raw (bytes) attributes
-    # print(result)
     r = c.response
-    c.unbind()
     return r
+
+def sync_users():
+    ldap_users = search('(objectClass=person)', ['uid', 'cn', 'sn', 'gecos'])
+
+    for user in ldap_users:
+        found_user = User.query.filter_by(username=user['attributes']['uid'][0]).first()
+        if isinstance(found_user, User):
+            current_app.logger.info('Updating user: {0}'.format(found_user.username))
+            found_user.name = user['attributes']['gecos'][0]
+        else:
+            uid = user['attributes']['uid'][0]
+            current_app.logger.info('Creating user: {0}'.format(uid))
+            current_app.db.session.add(User(uid, user['attributes']['gecos'][0]))
+
+    current_app.db.session.commit()
+
+def sync_teams():
+    ldap_groups = search('(objectClass=posixGroup)', ['cn', 'memberUid'])
+
+    for group in ldap_groups:
+        team = Team.query.filter_by(slug=group['attributes']['cn'][0]).first()
+        # if team already exists, update users
+        if isinstance(team, Team):
+            team.users = []
+            for uid in group['attributes']['memberUid']:
+                user = User.query.filter_by(username=uid).first()
+                if isinstance(user, User):
+                    team.users.append(user)
+        # create the team and add the users
+        else:
+            team = Team(group['attributes']['cn'][0])
+            team.users = []
+            for uid in group['attributes']['memberUid']:
+                user = User.query.filter_by(username=uid).first()
+                if isinstance(user, User):
+                    team.users.append(user)
+            current_app.db.session.add(team)
+
+        current_app.logger.info('LDAP Sync team {0} members: {1}'.format(team.slug, [str(u.username) for u in team.users]))
+    current_app.db.session.commit()
+
+

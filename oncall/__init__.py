@@ -45,7 +45,7 @@ def rotate_oncall():
        return
 
     # query the DB and check the last date the oncall rotation was done
-    app.logger.info('checking rotation')
+    app.logger.debug('checking rotation')
     session['rotated'] = datetime.now()
     c = Cron.query.filter_by(name='oncall_rotate').first()
     if c is None:

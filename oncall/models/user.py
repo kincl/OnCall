@@ -39,13 +39,14 @@ class User(db.Model):
         '''
         self.username = username
         self.name = name
-        self.set_teams(teams)
+        if not teams is None:
+            self.set_teams(teams)
         if len(self.teams) != 0:
             self.primary_team = self.teams[0].slug
         else:
             self.primary_team = None
         self.contact_card = ''
-        
+
     # TODO: Need to decide how to handle appends and single deletes?
     def set_teams(self, myteams):
         self.teams = []
