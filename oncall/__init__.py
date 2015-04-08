@@ -10,6 +10,16 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from forms import LoginForm, UpdateProfileForm
 
 app = Flask(__name__)
+
+import logging
+import logging.handlers
+syslog = logging.handlers.SysLogHandler("/dev/log")
+syslog.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+app.logger.addHandler(syslog)
+file = logging.FileHandler('/var/log/oncall.log')
+file.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+app.logger.addHandler(file)
+
 db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, Schedule, Cron
 app.db = db
@@ -22,6 +32,8 @@ from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_
 app.config.from_object('oncall.settings.Defaults')
 if 'ONCALLAPP_SETTINGS' in os.environ:
     app.config.from_envvar('ONCALLAPP_SETTINGS')
+
+app.logger.info("Config file at {0}".format(os.environ['ONCALLAPP_SETTINGS']))
 
 login_manager = LoginManager()
 login_manager.login_view = '/login'

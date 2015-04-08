@@ -323,23 +323,33 @@ $(document).ready(function() {
     global.menu = menu;
 
     // get teams
-    $.getJSON( "/api/v1/teams", function( data ) {
-        global.teams = [];
-        $.each( data['teams'], function( key, val ) {
-            global.teams.push(val);
+    $.ajax({
+        dataType: "json",
+        url: "/api/v1/teams",
+        async: false,
+        success: function( data ) {
+            global.teams = [];
+            $.each( data['teams'], function( key, val ) {
+                global.teams.push(val);
 
-            var onclick = "select_team('"+val['id']+"')";
-            $('.team-list').append($('<li/>')
-                                 .append($('<a/>')
-                                     .attr('onclick', onclick)
-                                     .attr('href', '#')
-                                     .html(val['name'])));
-        });
+                var onclick = "select_team('"+val['id']+"')";
+                $('.team-list').append($('<li/>')
+                                     .append($('<a/>')
+                                         .attr('onclick', onclick)
+                                         .attr('href', '#')
+                                         .html(val['name'])));
+            });
+        }
     });
 
     // set user state
-    $.getJSON( "/user/current_state", function( data ) {
-        select_team(data['primary_team'], false);
+    $.ajax({
+        dataType: "json",
+        url: "/user/current_state",
+        async: false,
+        success: function( data ) {
+            select_team(data['primary_team'], false);
+        }
     });
 
     // get roles and add to global variable
