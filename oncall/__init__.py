@@ -11,10 +11,8 @@ from forms import LoginForm, UpdateProfileForm
 
 app = Flask(__name__)
 db = SQLAlchemy(app)
-from oncall.models import Event, User, Team, OncallOrder, Cron
+from oncall.models import Event, User, Team, Schedule, Cron
 app.db = db
-
-from oncall.ldap_helper import bind
 
 from oncall.api import api
 app.register_blueprint(api, url_prefix='/api/v1')
@@ -74,7 +72,7 @@ def rotate_oncall():
     for team in Team.query.all():
         currently_oncall = {}
         for role in app.config['ROLES']:
-            oncall = OncallOrder.query.filter_by(team_slug=team.slug, role=role).all()
+            oncall = Schedule.query.filter_by(team_slug=team.slug, role=role).all()
             for oo in oncall:
                 oo.order = (oo.order - 1) % len(oncall)
                 if oo.order == 0:
@@ -132,6 +130,8 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         # login and validate the user...
+        from oncall.ldap_helper import bind
+
         password_bind = None
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user:
@@ -164,7 +164,7 @@ def current_oncall():
     for team in Team.query.all():
         current_team = {}
         current_oncall[team.name] = current_team
-        for order in OncallOrder.query.filter_by(team_slug=team.slug, order=0):
+        for order in Schedule.query.filter_by(team_slug=team.slug, order=0):
             current_team[order.role] = order.user
         for event in _get_events_for_dates(team.slug, date.today(), date.today()):
             current_team[event.role] = event.user

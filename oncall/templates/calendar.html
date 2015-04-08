@@ -132,7 +132,6 @@ body {
       <div id="flash-drawer" class="col-sm-9 col-md-10"></div>
     </div>
 
-
     <div class="row">
       <div class="col-sm-10 col-md-10 col-md-offset-0 main">
         <div id='loading' style='display:none'>loading...</div>
@@ -141,15 +140,14 @@ body {
 
       <div class="hidden-xs col-sm-2 col-md-2 sidebar">
         <div id='team'>
-          <div class='well' id='team_members'></div>
+          <div id='team_members' class='well'></div>
         </div>
       </div>
-
     </div>
   </div>
 
   <!-- Modal -->
-  <div class="modal" id="oncallOrderModal" tabindex="-1" role="dialog" aria-labelledby="oncallOrderModalLabel" aria-hidden="true">
+  <div id="oncallOrderModal" class="modal" tabindex="-1" role="dialog" aria-labelledby="oncallOrderModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
@@ -182,7 +180,7 @@ body {
   </div>
 
   <!-- Modal -->
-  <div class="modal" id="profileModal" tabindex="-1" role="dialog" aria-labelledby="profileModalLabel" aria-hidden="true">
+  <div id="profileModal" class="modal" tabindex="-1" role="dialog" aria-labelledby="profileModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
       <form class="form-horizontal" data-async data-target="#profile_modal_results" role="form" method="post" action="/user/updatePrefs">

@@ -4,7 +4,7 @@ from flask import Blueprint, current_app, request, jsonify, Response, make_respo
 
 from flask.ext.login import login_required
 
-from oncall.models import Event, User, Team, OncallOrder, Cron
+from oncall.models import Event, User, Team, Schedule, Cron
 from oncall.util import _update_object_model, _str_to_date, _get_monday, \
                         _filter_events_by_date, _serialize_and_delete_role, \
                         _get_events_for_dates, _get_week_dates, _api_error, \
@@ -93,12 +93,12 @@ def teams_schedule(team_slug):
     """
     if request.method == 'GET':
         return jsonify({'schedule':
-                       {'Primary': [s.to_json() for s in OncallOrder.query. \
+                       {'Primary': [s.to_json() for s in Schedule.query. \
                                     filter_by(role='Primary', team_slug=team_slug). \
-                                    order_by(OncallOrder.order).all()],
-                        'Secondary': [s.to_json() for s in OncallOrder.query. \
+                                    order_by(Schedule.order).all()],
+                        'Secondary': [s.to_json() for s in Schedule.query. \
                                       filter_by(role='Secondary', team_slug=team_slug). \
-                                      order_by(OncallOrder.order).all()]}})
+                                      order_by(Schedule.order).all()]}})
 
     if request.method == 'PUT':
         if not request.json or not 'schedule' in request.json:
@@ -108,7 +108,7 @@ def teams_schedule(team_slug):
         sched = request.json.get('schedule')
 
         # Maybe a better way to do this but delete all since we are doing an add all
-        for item in OncallOrder.query.filter_by(team_slug=team_slug).all():
+        for item in Schedule.query.filter_by(team_slug=team_slug).all():
             current_app.db.session.delete(item)
 
         max_len = -1
@@ -128,10 +128,10 @@ def teams_schedule(team_slug):
 
             for seq in sched.get(role):
                 user = User.query.filter_by(username=seq[1]).first_or_404().username
-                current_app.db.session.add(OncallOrder(team_slug, user, role, seq[0]))
+                current_app.db.session.add(Schedule(team_slug, user, role, seq[0]))
 
     if request.method == 'DELETE':
-        for item in OncallOrder.query.filter_by(team_slug=team_slug).all():
+        for item in Schedule.query.filter_by(team_slug=team_slug).all():
             current_app.db.session.delete(item)
 
     current_app.db.session.commit()

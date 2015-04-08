@@ -9,7 +9,7 @@ from ldap_test import LdapServer
 from ldap3 import Server, Connection
 
 from oncall import app, db, ldap_helper
-from oncall.models import Team, User, Cron, OncallOrder
+from oncall.models import Team, User, Cron, Schedule
 
 _ldap_server = LdapServer({
     'bind_dn': 'cn=admin,dc=example,dc=com',
@@ -178,8 +178,8 @@ class OncallTesting(TestCase):
         self.assert200(self.client.get('/api/v1/teams/testgroup'))
 
     def test_pseudocron(self):
-        db.session.add(OncallOrder('team-1', 'user1', "Primary", 0))
-        db.session.add(OncallOrder('team-1', 'user2', "Secondary", 0))
+        db.session.add(Schedule('team-1', 'user1', "Primary", 0))
+        db.session.add(Schedule('team-1', 'user2', "Secondary", 0))
 
         c = Cron('oncall_rotate')
         c.date_updated = datetime.now() - timedelta(7)

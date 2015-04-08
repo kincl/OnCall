@@ -26,12 +26,10 @@ class User(db.Model):
     events = db.relationship('Event',
                              backref='user',
                              lazy='dynamic')
-    oncallorder = db.relationship('OncallOrder',
-                                  backref='user',
-                                  lazy='dynamic')
+    schedule = db.relationship('Schedule',
+                               backref='user',
+                               lazy='dynamic')
 
-    _hide_command = ['contact_card', 'events', 'oncallorder']
-    _search_on = 'username'
 
     def __init__(self, username, name, teams = None):
         '''

@@ -6,7 +6,7 @@ from flask import current_app, request, Response
 
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from oncall.models import Event, User, Team, OncallOrder, Cron
+from oncall.models import Event, User, Team, Schedule, Cron
 
 ONE_DAY = timedelta(1)
 
@@ -72,9 +72,9 @@ def _get_events_for_dates(team, start_date, end_date, exclude_event=None, predic
     if not predict:
         return events
 
-    sched_query = OncallOrder.query.filter_by(team_slug=team) \
-                                   .order_by(OncallOrder.order,
-                                             OncallOrder.role)
+    sched_query = Schedule.query.filter_by(team_slug=team) \
+                                   .order_by(Schedule.order,
+                                             Schedule.role)
     sched_all = sched_query.all()
     sched_len = len(sched_all)/len(current_app.config['ROLES'])
 
