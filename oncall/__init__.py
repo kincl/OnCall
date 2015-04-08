@@ -18,7 +18,7 @@ from oncall.ldap_helper import bind
 from oncall.api import api
 app.register_blueprint(api, url_prefix='/api/v1')
 
-from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_events_for_dates
+from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_events_for_dates, ONE_DAY
 
 app.config.from_object('oncall.settings.Defaults')
 if 'ONCALLAPP_SETTINGS' in os.environ:
@@ -181,14 +181,11 @@ def calendar():
 @app.route('/user/current_state')
 @login_required
 def user_current_state():
-    return jsonify({'primary_team': current_user.primary_team})
+    team = current_user.primary_team
+    if team is None:
+        team = Team.query.first().slug
 
-
-@app.route('/user/getFlashes')
-@login_required
-def user_get_flashes():
-    return Response(json.dumps(get_flashed_messages(with_categories=True)),
-                    mimetype='application/json')
+    return jsonify({'primary_team': team})
 
 
 @app.route('/user/updatePrefs', methods=['POST'])

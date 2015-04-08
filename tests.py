@@ -3,11 +3,13 @@ import unittest
 import json
 from flask.ext.testing import TestCase
 
+from datetime import datetime, timedelta
+
 from ldap_test import LdapServer
 from ldap3 import Server, Connection
 
 from oncall import app, db, ldap_helper
-from oncall.models import Team, User
+from oncall.models import Team, User, Cron, OncallOrder
 
 _ldap_server = LdapServer({
     'bind_dn': 'cn=admin,dc=example,dc=com',
@@ -172,7 +174,18 @@ class OncallTesting(TestCase):
         ldap_helper.sync_teams()
         assert 'ldap_user1' in [u.username for u in Team.query.filter_by(slug='team-1').first().users]
         self.assert200(self.client.get('/api/v1/teams/testgroup'))
+
+    def test_pseudocron(self):
+        db.session.add(OncallOrder('team-1', 'user1', "Primary", 0))
+        db.session.add(OncallOrder('team-1', 'user2', "Secondary", 0))
+
+        c = Cron('oncall_rotate')
+        c.date_updated = datetime.now() - timedelta(7)
+        db.session.add(c)
+        db.session.commit()
         
+        assert 'user1' in self.client.get('api/v1/teams/team-1/schedule').data
+
 
 if __name__ == '__main__':
     unittest.main()
