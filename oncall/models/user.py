@@ -13,6 +13,8 @@ class User(db.Model):
     name = db.Column(db.String(200))
     primary_team = db.Column(db.String(200), db.ForeignKey('teams.slug'), nullable=True)
     contact_card = db.Column(db.Text())
+    api_key = db.Column(db.String(200))
+
     # Not sure why I had this??
     # teams = db.relationship('Team',
     #                         secondary=teams,

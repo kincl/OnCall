@@ -15,6 +15,7 @@ from oncall.models import Event, User, Team, OncallOrder, Cron
 app.db = db
 
 from oncall.ldap_helper import bind
+
 from oncall.api import api
 app.register_blueprint(api, url_prefix='/api/v1')
 
@@ -32,6 +33,15 @@ login_manager.init_app(app)
 @login_manager.user_loader
 def load_user(userid):
     return User.query.filter_by(username=userid).first()
+
+
+@login_manager.request_loader
+def load_user_from_request(request):
+    api_key = request.args.get('api_key')
+    if api_key:
+        user = User.query.filter_by(api_key=api_key).first()
+        if user:
+            return user
 
 
 @app.before_request

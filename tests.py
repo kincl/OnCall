@@ -88,6 +88,8 @@ class OncallTesting(TestCase):
     def create_app(self):
         # set up testing config
         app.config['TESTING'] = True
+        app.config['LOGIN_DISABLED'] = True # disables Flask-Login
+        app.login_manager._login_disabled = True # bc we init the app too early for config changes
         app.config['SECRET_KEY'] = 'testing'
         app.config['LDAP_HOST'] = 'dummy'
         app.config['LDAP_PORT'] = 'dummy'
@@ -183,7 +185,7 @@ class OncallTesting(TestCase):
         c.date_updated = datetime.now() - timedelta(7)
         db.session.add(c)
         db.session.commit()
-        
+
         assert 'user1' in self.client.get('api/v1/teams/team-1/schedule').data
 
 

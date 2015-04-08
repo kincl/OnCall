@@ -2,6 +2,8 @@ import json
 from datetime import date
 from flask import Blueprint, current_app, request, jsonify, Response, make_response
 
+from flask.ext.login import login_required
+
 from oncall.models import Event, User, Team, OncallOrder, Cron
 from oncall.util import _update_object_model, _str_to_date, _get_monday, \
                         _filter_events_by_date, _serialize_and_delete_role, \
@@ -16,6 +18,7 @@ def help():
 
 
 @api.route('/teams', methods = ['GET', 'POST'])
+@login_required
 def teams():
     if request.method == 'GET':
         return jsonify({'teams': [t.to_json() for t in Team.query.all()]})
@@ -32,6 +35,7 @@ def teams():
 
 
 @api.route('/teams/<team_slug>', methods = ['GET', 'PUT', 'DELETE'])
+@login_required
 def teams_team(team_slug):
     team = Team.query.filter_by(slug=team_slug).first_or_404()
     if request.method == 'GET':
@@ -53,6 +57,7 @@ def teams_team(team_slug):
 
 
 @api.route('/teams/<team_slug>/members', methods = ['GET', 'PUT', 'DELETE'])
+@login_required
 def teams_members(team_slug):
     team = Team.query.filter_by(slug=team_slug).first_or_404()
     if request.method == 'GET':
@@ -77,6 +82,7 @@ def teams_members(team_slug):
 
 
 @api.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
+@login_required
 def teams_schedule(team_slug):
     """
 
@@ -133,6 +139,7 @@ def teams_schedule(team_slug):
 
 
 @api.route('/teams/<team_slug>/events', methods = ['GET', 'POST'])
+@login_required
 def teams_on_call(team_slug):
     """
         POST:
@@ -180,6 +187,7 @@ def teams_on_call(team_slug):
 
 
 @api.route('/teams/<team_slug>/events/<eventid>', methods = ['GET', 'PUT', 'DELETE'])
+@login_required
 def teams_on_call_events_event(team_slug, eventid):
     if request.method == 'GET':
         return jsonify(Event.query.filter_by(id=eventid).first_or_404().to_json())
@@ -227,6 +235,7 @@ def teams_on_call_events_event(team_slug, eventid):
 
 
 @api.route('/users', methods = ['GET', 'POST'])
+@login_required
 def users():
     if request.method == 'GET':
         return jsonify({'users': [u.to_json() for u in User.query.all()]})
@@ -243,6 +252,7 @@ def users():
 
 
 @api.route('/users/<username>', methods = ['GET', 'PUT', 'DELETE'])
+@login_required
 def users_user(username):
     user = User.query.filter_by(username=username).first_or_404()
     if request.method == 'GET':
@@ -267,11 +277,13 @@ def users_user(username):
 
 
 @api.route('/users/<user>/on_call', methods = ['GET', 'PUT', 'DELETE'])
+@login_required
 def users_on_call(user):
     return Response(status=501)
 
 
 @api.route('/roles', methods = ['GET'])
+@login_required
 def roles():
     if request.method == 'GET':
         return jsonify(roles=current_app.config['ROLES'])
