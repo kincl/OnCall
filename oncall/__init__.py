@@ -29,13 +29,12 @@ from oncall.util import _get_monday, _filter_events_by_date, _str_to_date, _get_
 app.config.from_object('oncall.settings.Defaults')
 if 'ONCALLAPP_SETTINGS' in os.environ:
     app.config.from_envvar('ONCALLAPP_SETTINGS')
+    app.logger.info("Config file at {0}".format(os.environ['ONCALLAPP_SETTINGS']))
 
 if app.config['LOG_FILE']:
     file = logging.FileHandler(app.config['LOG_FILE'])
     file.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
     app.logger.addHandler(file)
-
-app.logger.info("Config file at {0}".format(os.environ['ONCALLAPP_SETTINGS']))
 
 login_manager = LoginManager()
 login_manager.login_view = '/login'
@@ -63,7 +62,7 @@ def load_user_from_request(request):
 def rotate_oncall():
     # TODO: Allow for changes to this time limit
     if session.get('rotated', None) != None and \
-       session.get('rotated') > datetime.now() - timedelta(0, 3):
+       session.get('rotated') > datetime.now() - timedelta(0, int(app.config.get('LIMIT', 3))):
        session['rotated'] = datetime.now()
        # TODO: this appears to only suceed if the last request was made more than X seconds ago?
        return

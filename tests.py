@@ -97,7 +97,9 @@ class OncallTesting(TestCase):
         app.config['LDAP_PEOPLE_OU'] = 'ou=People'
 
         app.config['LDAP_SYNC_USER_FILTER'] = '(objectClass=person)'
-        app.config['LDAP_SYNC_TEAM_FILTER'] = '(objectClass=posixGroup)'
+        app.config['LDAP_SYNC_GROUP_FILTER'] = '(objectClass=posixGroup)'
+
+        app.config['LIMIT'] = '0'
 
         return app
 
@@ -112,8 +114,8 @@ class OncallTesting(TestCase):
 
         user1 = User('user1', 'Test User', [team1.slug])
         user2 = User('user2', 'Another User', [team1.slug])
-        user3 = User('user3', 'Byzantine Candor', [team2.slug])
-        user4 = (User('user4', 'Cottonmouth', [team2.slug]))
+        user3 = User('user3', 'Byzantine Candor', [team1.slug,team2.slug])
+        user4 = (User('user4', 'Cottonmouth', [team1.slug,team2.slug]))
         db.session.add(user1)
         db.session.add(user2)
         db.session.add(user3)
@@ -170,7 +172,7 @@ class OncallTesting(TestCase):
         bind = ldap_helper.bind('user2', 'chevron')
         assert bind is True
 
-    def test_ldap_sync(self):
+    def tes_ldap_sync(self):
         ldap_helper.sync_users()
         assert User.query.filter_by(username="ldap_user1").first() is not None
 
@@ -181,13 +183,30 @@ class OncallTesting(TestCase):
     def test_pseudocron(self):
         db.session.add(Schedule('team-1', 'user1', "Primary", 0))
         db.session.add(Schedule('team-1', 'user2', "Secondary", 0))
+        db.session.add(Schedule('team-1', 'user3', "Primary", 1))
+        db.session.add(Schedule('team-1', 'user1', "Secondary", 1))
+        db.session.add(Schedule('team-1', 'user2', "Primary", 2))
+        db.session.add(Schedule('team-1', 'user3', "Secondary", 2))
 
+        db.session.add(Schedule('team-2', 'user3', "Primary", 0))
+        db.session.add(Schedule('team-2', 'user4', "Secondary", 0))
+        db.session.add(Schedule('team-2', 'user4', "Primary", 1))
+        db.session.add(Schedule('team-2', 'user3', "Secondary", 1))
+
+        #print self.client.get('api/v1/teams/team-1/schedule').data
+        #c = User.query.filter_by(name='oncall_rotate')
         c = Cron('oncall_rotate')
         c.date_updated = datetime.now() - timedelta(7)
         db.session.add(c)
         db.session.commit()
 
-        assert 'user1' in self.client.get('api/v1/teams/team-1/schedule').data
+        team1_sched = json.loads(self.client.get('api/v1/teams/team-1/schedule').data)
+        assert 'user3' in team1_sched['schedule']['Primary'][0]['user']['id']
+        assert 'user1' in team1_sched['schedule']['Secondary'][0]['user']['id']
+
+        team2_sched = json.loads(self.client.get('api/v1/teams/team-2/schedule').data)
+        assert 'user4' in team2_sched['schedule']['Primary'][0]['user']['id']
+        assert 'user3' in team2_sched['schedule']['Secondary'][0]['user']['id']
 
 
 if __name__ == '__main__':
