@@ -2,7 +2,8 @@ import os
 from copy import deepcopy
 from datetime import date, timedelta, datetime
 
-from flask import Flask, request, render_template, json, Response, session, redirect, flash, get_flashed_messages, jsonify
+from flask import Flask, request, render_template, json, Response, session, \
+                  redirect, flash, get_flashed_messages, jsonify, url_for
 
 from flask.ext.login import LoginManager, login_user, logout_user, login_required, current_user
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -13,13 +14,35 @@ app = Flask(__name__)
 
 import logging
 import logging.handlers
-syslog = logging.handlers.SysLogHandler("/dev/log")
-syslog.setFormatter(logging.Formatter("%(name)s: %(message)s"))
-app.logger.addHandler(syslog)
 
 db = SQLAlchemy(app)
 from oncall.models import Event, User, Team, Schedule, Cron
 app.db = db
+
+from flask_admin import Admin
+from flask_admin.contrib.sqla import ModelView
+
+class MyModelView(ModelView):
+    column_display_pk = True
+
+    def is_accessible(self):
+        return current_user.is_authenticated()
+
+    def inaccessible_callback(self, name, **kwargs):
+        # redirect to login page if user doesn't have access
+        return redirect(url_for('login', next=request.url))
+
+class UserModelView(MyModelView):
+    form_columns = ('username', 'name', 'teams')
+
+class TeamModelView(MyModelView):
+    form_columns = ('name', 'slug')
+
+admin = Admin(app, name='Oncall', template_mode='bootstrap3')
+admin.add_view(UserModelView(User, db.session))
+admin.add_view(TeamModelView(Team, db.session))
+admin.add_view(MyModelView(Cron, db.session))
+# Add administrative views here
 
 from oncall.api import api
 app.register_blueprint(api, url_prefix='/api/v1')
@@ -35,6 +58,11 @@ if app.config['LOG_FILE']:
     file = logging.FileHandler(app.config['LOG_FILE'])
     file.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
     app.logger.addHandler(file)
+
+if app.config['SYSLOG']:
+    syslog = logging.handlers.SysLogHandler("/dev/log")
+    syslog.setFormatter(logging.Formatter("%(name)s: %(message)s"))
+    app.logger.addHandler(syslog)
 
 login_manager = LoginManager()
 login_manager.login_view = '/login'
@@ -57,7 +85,6 @@ def load_user_from_request(request):
             return user
 
 
-@app.before_request
 @app.route('/schedule/rotate')
 def rotate_oncall():
     # TODO: Allow for changes to this time limit
@@ -65,7 +92,7 @@ def rotate_oncall():
        session.get('rotated') > datetime.now() - timedelta(0, int(app.config.get('LIMIT', 3))):
        session['rotated'] = datetime.now()
        # TODO: this appears to only suceed if the last request was made more than X seconds ago?
-       return
+       return Response('Too many responses', 200)
 
     # query the DB and check the last date the oncall rotation was done
     app.logger.debug('checking rotation')
@@ -75,10 +102,10 @@ def rotate_oncall():
         c = Cron('oncall_rotate')
         db.session.add(c)
         db.session.commit()
-
-    if _get_monday(c.date_updated) == _get_monday(date.today()):
-        # then we are in the same week, do nothing
-        return
+    else:
+        if _get_monday(c.date_updated) == _get_monday(date.today()):
+            # then we are in the same week, do nothing
+            return Response('Already done', 200)
 
     app.logger.info('Rotating on call')
     c.date_updated = date.today()
@@ -127,6 +154,7 @@ def rotate_oncall():
             db.session.add(event)
         db.session.commit()
 
+    return Response('', 200)
 
 @app.after_request
 def add_header(response):
@@ -150,11 +178,10 @@ def login():
         password_bind = None
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user:
-            # if app.debug:
-            #     password_bind = True
-
-            password_bind = bind(request.form.get('username'), request.form.get('password'))
-
+            if app.debug:
+                password_bind = True
+            else:
+                password_bind = bind(request.form.get('username'), request.form.get('password'))
         if password_bind:
             login_user(user)
             return redirect(request.args.get('next') or '/')

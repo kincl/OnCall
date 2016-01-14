@@ -22,12 +22,12 @@ class Team(db.Model):
     _hide_command = []
     _search_on = 'slug'
 
-    def __init__(self, name):
+    def __init__(self, name=None):
         '''
         name - Team name
         '''
         self.name = name
-        self.slug = slugify(name)
+        self.slug = None
 
     def to_json(self):
         return dict(name=self.name,

@@ -6,3 +6,4 @@ class Defaults(object):
     ROLES = ['Primary','Secondary']
     ONCALL_START = 1
     LOG_FILE = False
+    SYSLOG = False

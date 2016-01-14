@@ -1,2 +1,2 @@
 Flask-Testing==0.4.2
-python-ldap-test==0.2.0
+python-ldap-test==0.1.0

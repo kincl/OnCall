@@ -31,7 +31,7 @@ class User(db.Model):
                                lazy='dynamic')
 
 
-    def __init__(self, username, name, teams = None):
+    def __init__(self, username=None, name=None, teams=None):
         '''
         username - username
         name - name
