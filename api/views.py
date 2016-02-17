@@ -1,3 +1,5 @@
+import json
+from datetime import date
 from flask import Blueprint, current_app, request, jsonify, Response
 from flask_login import login_required
 
@@ -142,10 +144,10 @@ def teams_on_call(team_slug):
     """
         POST:
             {"start":"2014-12-23", "username":"jkincl"}
+
+        Default to the current day if nothing specified
     """
     if request.method == 'GET':
-        """ Default to the current day if nothing specified """
-        #monday, sunday = _get_week_dates(date.today())
         req_start = request.args.get('start', None, type=float)
         req_end = request.args.get('end', None, type=float)
         date_start = (date.fromtimestamp(req_start) if req_start is not None else date.today())
