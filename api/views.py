@@ -3,16 +3,15 @@ from flask.ext.login import login_required
 
 from database import db
 
-from api.models import Event, User, Team, Schedule, Cron
-from oncall.util import _update_object_model, _str_to_date, _get_monday, \
-                        _filter_events_by_date, _serialize_and_delete_role, \
-                        _get_events_for_dates, _get_week_dates, _api_error, \
-                        _can_add_event, _other_role, _is_role_valid
+from api.models import Event, User, Team, Schedule
+from util import _update_object_model, _str_to_date, \
+                 _get_events_for_dates, _api_error, \
+                 _can_add_event, _other_role, _is_role_valid
 
 api_app = Blueprint('api', __name__, url_prefix='/api/v1')
 
 @api_app.route('/')
-def help():
+def api_help():
     return "Help about the API will go here"
 
 
