@@ -1,5 +1,7 @@
 from flask.ext.login import LoginManager
 
+from api.models import User
+
 login_manager = LoginManager()
 login_manager.login_view = '/login'
 

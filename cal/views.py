@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, flash, render_template, get_flashed_messages, request, redirect
-from flask.ext.login import login_required
+from flask.ext.login import login_required, login_user
 
 from api.models import User, Team, Schedule
 
@@ -21,7 +21,7 @@ def login():
         password_bind = None
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user:
-            if app.debug:
+            if current_app.config['DEBUG']:
                 password_bind = True
             else:
                 password_bind = bind(request.form.get('username'), request.form.get('password'))
