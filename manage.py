@@ -1,5 +1,5 @@
 from flask import url_for
-from flask.ext.script import Manager
+from flask_script import Manager
 
 from main import create_app
 from database import db
