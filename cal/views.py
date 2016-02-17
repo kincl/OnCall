@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, flash, render_template, get_flashed_messages, request, redirect
-from flask.ext.login import login_required, login_user
+from flask.ext.login import login_required, login_user, logout_user
 
 from api.models import User, Team, Schedule
 

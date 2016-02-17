@@ -15,6 +15,7 @@ def create_app():
     app.config.from_object('config.Defaults')
 
     # TODO remove this
+    app.config['DEBUG'] = True
     app.config['SECRET_KEY'] = 'asdf'
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 

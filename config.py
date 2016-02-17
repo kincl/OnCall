@@ -1,6 +1,6 @@
 # These are defaults, set yours somewhere else
 class Defaults(object):
-    DEBUG = True
+    DEBUG = False
     TESTING = False
     SQLALCHEMY_DATABASE_URI = 'sqlite://'
     ROLES = ['Primary','Secondary']
