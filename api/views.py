@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, request, jsonify, Response
-from flask.ext.login import login_required
+from flask_login import login_required
 
 from database import db
 
