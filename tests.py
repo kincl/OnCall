@@ -1,8 +1,13 @@
 # import os
-# import unittest
 # import json
-# from flask.ext.testing import TestCase
-#
+
+import unittest
+from flask_testing import TestCase
+
+from main import create_app
+from database import db
+from api.models import User, Team
+
 # from datetime import datetime, timedelta
 #
 # from ldap3 import Server, Connection
@@ -80,68 +85,89 @@
 # #    srv = Server('localhost', port=_ldap_server.config['port'])
 # #    conn = Connection(srv, user=dn, password=pw, auto_bind=True)
 # #    return conn
-#
-#
-# class OncallTesting(TestCase):
-#
-#     def create_app(self):
-#         # set up testing config
-#         app.config['TESTING'] = True
-#         app.config['LOGIN_DISABLED'] = True # disables Flask-Login
-#         app.login_manager._login_disabled = True # bc we init the app too early for config changes
-#         app.config['SECRET_KEY'] = 'testing'
-#         app.config['LDAP_HOST'] = 'dummy'
-#         app.config['LDAP_PORT'] = 'dummy'
-#         app.config['LDAP_BASE_DN'] = 'dc=example,dc=com'
-#         app.config['LDAP_PEOPLE_OU'] = 'ou=People'
-#
-#         app.config['LDAP_SYNC_USER_FILTER'] = '(objectClass=person)'
-#         app.config['LDAP_SYNC_GROUP_FILTER'] = '(objectClass=posixGroup)'
-#
-#         app.config['LIMIT'] = '0'
-#
-#         return app
-#
-#     def setUp(self):
-#         db.create_all()
-#         db.session.commit()
-#
-#         team1 = Team('Team 1')
-#         team2 = Team('Team 2')
-#         db.session.add(team1)
-#         db.session.add(team2)
-#
-#         user1 = User('user1', 'Test User', [team1.slug])
-#         user2 = User('user2', 'Another User', [team1.slug])
-#         user3 = User('user3', 'Byzantine Candor', [team1.slug,team2.slug])
-#         user4 = (User('user4', 'Cottonmouth', [team1.slug,team2.slug]))
-#         db.session.add(user1)
-#         db.session.add(user2)
-#         db.session.add(user3)
-#         db.session.add(user4)
-#         db.session.commit()
-#
-#         #_ldap_server.start()
-#         ## monkey patch our connection helper
-#         #ldap_helper.get_conn = ldap_get_conn
-#
-#     def tearDown(self):
-#         db.session.remove()
-#         db.drop_all()
-#
-#         #_ldap_server.stop()
-#
-#     def test_get_oncall_index(self):
-#         rv = self.client.get('/')
-#
-#         assert 'Team 1' in rv.data
-#
-#     def test_teams_get_post(self):
-#         # -- get
-#         rv = self.client.get('/api/v1/teams')
-#         self.assert200(rv)
-#         assert 'teams' in rv.json
-#
+
+
+class OncallTesting(TestCase):
+
+    def create_app(self):
+        app = create_app()
+        app.config['DEBUG'] = True
+        app.config['TESTING'] = True
+        app.config['WTF_CSRF_ENABLED'] = False
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/testing_oncall.db'
+
+        # http://stackoverflow.com/questions/26647032/py-test-to-test-flask-register-assertionerror-popped-wrong-request-context
+        app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
+
+        return app
+
+    def setUp(self):
+        db.create_all()
+        db.session.commit()
+
+        team1 = Team('Team 1')
+        team2 = Team('Team 2')
+        db.session.add(team1)
+        db.session.add(team2)
+
+        # so primary key gets populated
+        db.session.flush()
+
+        user1 = User('user1', 'Test User', [team1.id])
+        user2 = User('user2', 'Another User', [team1.id])
+        user3 = User('user3', 'Byzantine Candor', [team1.id, team2.id])
+        user4 = (User('user4', 'Cottonmouth', [team1.id, team2.id]))
+        db.session.add(user1)
+        db.session.add(user2)
+        db.session.add(user3)
+        db.session.add(user4)
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.remove()
+        db.drop_all()
+
+    def login(self, username, password):
+        return self.client.post('/login', data=dict(
+            username=username,
+            password=password
+        ), follow_redirects=True)
+
+    def logout(self):
+        return self.client.get('/logout', follow_redirects=True)
+
+    # def test_login_logout(self):
+    #     rv = self.login('user1', 'test')
+    #     assert 'You were logged in' in rv.data
+    #     rv = self.logout()
+    #     assert 'You were logged out' in rv.data
+    #     rv = self.login('adminx', 'default')
+    #     assert 'Invalid username' in rv.data
+    #     rv = self.login('admin', 'defaultx')
+    #     assert 'Invalid password' in rv.data
+
+    def test_teams_users_get(self):
+        self.login('user1', 'test')
+        rv = self.client.get('/api/v1/users')
+        # print rv.data
+        self.assert200(rv)
+        assert 'users' in rv.data
+
+        rv = self.client.get('/api/v1/teams')
+        # print rv.data
+        self.assert200(rv)
+        assert 'teams' in rv.data
+
+    def test_team_members_get(self):
+        self.login('user1', 'test')
+        rv = self.client.get('/api/v1/teams/1/members')
+        # print rv.data
+        self.assert200(rv)
+        assert 'teams' in rv.data
+
+
+
+
 #         # -- post
 #         newteam = {'team':'Team 3'}
 #         self.assert200(self.client.post('/api/v1/teams', content_type='application/json', data=json.dumps(newteam)))
@@ -208,7 +234,7 @@
 #         team2_sched = json.loads(self.client.get('api/v1/teams/team-2/schedule').data)
 #         assert 'user4' in team2_sched['schedule']['Primary'][0]['user']['id']
 #         assert 'user3' in team2_sched['schedule']['Secondary'][0]['user']['id']
-#
-#
-# if __name__ == '__main__':
-#     unittest.main()
+
+
+if __name__ == '__main__':
+    unittest.main()

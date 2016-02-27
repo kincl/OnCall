@@ -16,7 +16,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         # login and validate the user...
-        from oncall.ldap_helper import bind
+        # from oncall.ldap_helper import bind
 
         password_bind = None
         user = User.query.filter_by(username=request.form.get('username')).first()

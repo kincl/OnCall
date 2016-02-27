@@ -34,10 +34,10 @@ def teams():
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>', methods=['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_id>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
-def teams_team(team_slug):
-    team = Team.query.filter_by(slug=team_slug).first_or_404()
+def teams_team(team_id):
+    team = Team.query.filter_by(id=team_id).first_or_404()
     if request.method == 'GET':
         return jsonify(team.to_json())
 
@@ -56,10 +56,10 @@ def teams_team(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/members', methods=['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_id>/members', methods=['GET', 'PUT', 'DELETE'])
 @login_required
-def teams_members(team_slug):
-    team = Team.query.filter_by(slug=team_slug).first_or_404()
+def teams_members(team_id):
+    team = Team.query.filter_by(id=team_id).first_or_404()
     if request.method == 'GET':
         members = []
         for u in team.users:
@@ -81,9 +81,9 @@ def teams_members(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/schedule', methods=['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_id>/schedule', methods=['GET', 'PUT', 'DELETE'])
 @login_required
-def teams_schedule(team_slug):
+def teams_schedule(team_id):
     """
 
         PUT structure:
@@ -94,10 +94,10 @@ def teams_schedule(team_slug):
     if request.method == 'GET':
         return jsonify({'schedule':
                        {'Primary': [s.to_json() for s in Schedule.query. \
-                                    filter_by(role='Primary', team_slug=team_slug). \
+                                    filter_by(role='Primary', team_id=team_id). \
                                     order_by(Schedule.order).all()],
                         'Secondary': [s.to_json() for s in Schedule.query. \
-                                      filter_by(role='Secondary', team_slug=team_slug). \
+                                      filter_by(role='Secondary', team_id=team_id). \
                                       order_by(Schedule.order).all()]}})
 
     if request.method == 'PUT':
@@ -108,7 +108,7 @@ def teams_schedule(team_slug):
         sched = request.json.get('schedule')
 
         # Maybe a better way to do this but delete all since we are doing an add all
-        for item in Schedule.query.filter_by(team_slug=team_slug).all():
+        for item in Schedule.query.filter_by(team_id=team_id).all():
             db.session.delete(item)
 
         max_len = -1
@@ -128,19 +128,19 @@ def teams_schedule(team_slug):
 
             for seq in sched.get(role):
                 user = User.query.filter_by(username=seq[1]).first_or_404().username
-                db.session.add(Schedule(team_slug, user, role, seq[0]))
+                db.session.add(Schedule(team_id, user, role, seq[0]))
 
     if request.method == 'DELETE':
-        for item in Schedule.query.filter_by(team_slug=team_slug).all():
+        for item in Schedule.query.filter_by(team_id=team_id).all():
             db.session.delete(item)
 
     db.session.commit()
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/events', methods=['GET', 'POST'])
+@api_app.route('/teams/<team_id>/events', methods=['GET', 'POST'])
 @login_required
-def teams_on_call(team_slug):
+def teams_on_call(team_id):
     """
         POST:
             {"start":"2014-12-23", "username":"jkincl"}
@@ -153,7 +153,7 @@ def teams_on_call(team_slug):
         date_start = (date.fromtimestamp(req_start) if req_start is not None else date.today())
         date_end = (date.fromtimestamp(req_end) if req_end is not None else date.today())
 
-        events = _get_events_for_dates(team_slug,
+        events = _get_events_for_dates(team_id,
                                        date_start,
                                        date_end,
                                        predict=True)
@@ -168,12 +168,12 @@ def teams_on_call(team_slug):
                         'on_call': event_array})
 
     if request.method == 'POST':
-        if _can_add_event(team_slug, request.json.get('start'), request.json.get('end')):
-            events = _get_events_for_dates(team_slug,
+        if _can_add_event(team_id, request.json.get('start'), request.json.get('end')):
+            events = _get_events_for_dates(team_id,
                                            request.json.get('start'),
                                            request.json.get('end'))
             newe = Event(request.json.get('username'),
-                         team_slug,
+                         team_id,
                          current_app.config['ROLES'][0] if events == [] else _other_role(events[0].role),
                          _str_to_date(request.json.get('start')))
             db.session.add(newe)
@@ -186,9 +186,9 @@ def teams_on_call(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/events/<eventid>', methods=['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_id>/events/<eventid>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
-def teams_on_call_events_event(team_slug, eventid):
+def teams_on_call_events_event(team_id, eventid):
     if request.method == 'GET':
         return jsonify(Event.query.filter_by(id=eventid).first_or_404().to_json())
 
@@ -199,7 +199,7 @@ def teams_on_call_events_event(team_slug, eventid):
 
         e = Event.query.filter_by(id=eventid).first_or_404()
         if start:
-            if _can_add_event(e.team_slug,
+            if _can_add_event(e.team_id,
                               start,
                               end,
                               exclude_event=eventid):
@@ -286,4 +286,4 @@ def users_on_call(user):
 # @login_required
 def roles():
     if request.method == 'GET':
-        return jsonify(roles=current_app.config['ROLES'])
+        return jsonify(dict(data=dict(type='roles', attributes=dict(roles=current_app.config['ROLES']))))
