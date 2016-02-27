@@ -17,7 +17,7 @@ def api_help():
     return "Help about the API will go here"
 
 
-@api_app.route('/teams', methods = ['GET', 'POST'])
+@api_app.route('/teams', methods=['GET', 'POST'])
 @login_required
 def teams():
     if request.method == 'GET':
@@ -34,7 +34,7 @@ def teams():
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>', methods = ['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_slug>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def teams_team(team_slug):
     team = Team.query.filter_by(slug=team_slug).first_or_404()
@@ -56,7 +56,7 @@ def teams_team(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/members', methods = ['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_slug>/members', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def teams_members(team_slug):
     team = Team.query.filter_by(slug=team_slug).first_or_404()
@@ -81,7 +81,7 @@ def teams_members(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/schedule', methods = ['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_slug>/schedule', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def teams_schedule(team_slug):
     """
@@ -138,7 +138,7 @@ def teams_schedule(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/events', methods = ['GET', 'POST'])
+@api_app.route('/teams/<team_slug>/events', methods=['GET', 'POST'])
 @login_required
 def teams_on_call(team_slug):
     """
@@ -186,7 +186,7 @@ def teams_on_call(team_slug):
     return Response(status=200)
 
 
-@api_app.route('/teams/<team_slug>/events/<eventid>', methods = ['GET', 'PUT', 'DELETE'])
+@api_app.route('/teams/<team_slug>/events/<eventid>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def teams_on_call_events_event(team_slug, eventid):
     if request.method == 'GET':
@@ -234,7 +234,7 @@ def teams_on_call_events_event(team_slug, eventid):
     return Response(status=200)
 
 
-@api_app.route('/users', methods = ['GET', 'POST'])
+@api_app.route('/users', methods=['GET', 'POST'])
 @login_required
 def users():
     if request.method == 'GET':
@@ -251,7 +251,7 @@ def users():
     return Response(status=200)
 
 
-@api_app.route('/users/<username>', methods = ['GET', 'PUT', 'DELETE'])
+@api_app.route('/users/<username>', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def users_user(username):
     user = User.query.filter_by(username=username).first_or_404()
@@ -276,13 +276,13 @@ def users_user(username):
     return Response(status=200)
 
 
-@api_app.route('/users/<user>/on_call', methods = ['GET', 'PUT', 'DELETE'])
+@api_app.route('/users/<user>/on_call', methods=['GET', 'PUT', 'DELETE'])
 @login_required
 def users_on_call(user):
     return Response(status=501)
 
 
-@api_app.route('/roles', methods = ['GET'])
+@api_app.route('/roles', methods=['GET'])
 # @login_required
 def roles():
     if request.method == 'GET':

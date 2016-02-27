@@ -8,7 +8,6 @@ class Cron(db.Model):
     name = db.Column(db.String(200), primary_key=True)
     date_updated = db.Column(db.Date)
 
-    _hide_command = []
     _search_on = 'name'
 
     def __init__(self, name):
@@ -28,7 +27,6 @@ class Event(db.Model):
     start = db.Column(db.Date)
     end = db.Column(db.Date)
 
-    _hide_command = []
     _search_on = 'id'
 
     def __init__(self, user_username, team_slug, role, start, end = None):
@@ -82,8 +80,6 @@ class Team(db.Model):
     slug = db.Column(db.String(200), primary_key=True)
     name = db.Column(db.String(200))
 
-    # TODO: This needs to be in a higher class and is inherited
-    _hide_command = []
     _search_on = 'slug'
 
     def __init__(self, name=None):
