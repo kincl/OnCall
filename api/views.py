@@ -265,7 +265,7 @@ def users_user(username):
             return _api_error('Malformed request, no JSON', 'danger')
         # TODO: hax?
         if 'teams' in request.json:
-            request.json['teams'] = [Team.query.filter_by(slug=t).first_or_404() for t in request.json.get('teams')]
+            request.json['teams'] = [Team.query.filter_by(id=tid).first_or_404() for tid in request.json.get('teams')]
         if not _update_object_model(User, user):
             return _api_error('Key not in model', 'danger')
 

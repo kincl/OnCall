@@ -6,7 +6,7 @@ from flask_testing import TestCase
 
 from main import create_app
 from database import db
-from api.models import User, Team
+from api.models import User, Team, Schedule
 
 # from datetime import datetime, timedelta
 #
@@ -121,6 +121,21 @@ class OncallTesting(TestCase):
         db.session.add(user2)
         db.session.add(user3)
         db.session.add(user4)
+
+        db.session.flush()
+
+        db.session.add(Schedule(team1.id, user1.id, "Primary", 0))
+        db.session.add(Schedule(team1.id, user2.id, "Secondary", 0))
+        db.session.add(Schedule(team1.id, user3.id, "Primary", 1))
+        db.session.add(Schedule(team1.id, user1.id, "Secondary", 1))
+        db.session.add(Schedule(team1.id, user2.id, "Primary", 2))
+        db.session.add(Schedule(team1.id, user3.id, "Secondary", 2))
+
+        db.session.add(Schedule(team2.id, user3.id, "Primary", 0))
+        db.session.add(Schedule(team2.id, user4.id, "Secondary", 0))
+        db.session.add(Schedule(team2.id, user4.id, "Primary", 1))
+        db.session.add(Schedule(team2.id, user3.id, "Secondary", 1))
+
         db.session.commit()
 
     def tearDown(self):
@@ -158,6 +173,13 @@ class OncallTesting(TestCase):
         self.assert200(rv)
         assert 'teams' in rv.data
 
+    def test_get_single_user(self):
+        self.login('user1', 'test')
+        rv = self.client.get('/api/v1/users/user1')
+        # print rv.data
+        self.assert200(rv)
+        assert 'user1' in rv.data
+
     def test_team_members_get(self):
         self.login('user1', 'test')
         rv = self.client.get('/api/v1/teams/1/members')
@@ -165,7 +187,11 @@ class OncallTesting(TestCase):
         self.assert200(rv)
         assert 'teams' in rv.data
 
-
+    def test_schedule_get(self):
+        self.login('user1', 'test')
+        rv = self.client.get('api/v1/teams/1/schedule')
+        self.assert200(rv)
+        assert 'schedule' in rv.data
 
 
 #         # -- post
