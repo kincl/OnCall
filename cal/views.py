@@ -1,11 +1,11 @@
 from flask import Blueprint, current_app, flash, render_template, get_flashed_messages, request, redirect
-from flask_login import login_required, login_user, logout_user
+from flask_login import login_required, login_user, logout_user, current_user
 
 from api.models import User, Team, Schedule
 from util import _get_events_for_dates
 from datetime import date
 
-from cal.forms import LoginForm
+from cal.forms import LoginForm, UpdateProfileForm
 
 calendar_app = Blueprint('cal', __name__,
                          url_prefix='',
@@ -44,6 +44,21 @@ def logout():
     logout_user()
     return redirect('/login')
 
+@calendar_app.route('/calendar')
+@login_required
+def calendar():
+    profile_form = UpdateProfileForm()
+
+    profile_form.primary_team.choices = [(t.id, t.name) for t in Team.query.all()]
+    profile_form.teams.choices = [(t.id, t.name) for t in Team.query.all()]
+    profile_form.primary_team.data = current_user.primary_team
+    profile_form.contact_card.data = current_user.contact_card
+    profile_form.teams.data = [team.id for team in current_user.teams]
+
+    return render_template('calendar.html',
+                        #    selected_team=team,
+                           profile_form=profile_form,
+                           logged_in=current_user)
 
 @calendar_app.route('/')
 def current_oncall():
@@ -51,7 +66,7 @@ def current_oncall():
     for team in Team.query.all():
         current_team = {}
         current_oncall[team.name] = current_team
-        for order in Schedule.query.filter_by(team_slug=team.slug, order=0):
+        for order in Schedule.query.filter_by(team_id=team.id, order=0):
             current_team[order.role] = order.user
         for event in _get_events_for_dates(team.id, date.today(), date.today()):
             current_team[event.role] = event.user

@@ -1,6 +1,7 @@
 from urlparse import urlparse, urljoin
 from flask import request, redirect, url_for
-from wtforms import StringField, PasswordField, HiddenField
+from wtforms import StringField, PasswordField, HiddenField, SelectField, \
+                    TextAreaField, SelectMultipleField
 from flask_wtf import Form
 
 
@@ -37,3 +38,8 @@ class RedirectForm(Form):
 class LoginForm(RedirectForm):
     username = StringField('Username')
     password = PasswordField('Password')
+
+class UpdateProfileForm(Form):
+    primary_team = SelectField('Primary Team')
+    contact_card = TextAreaField('Contact Card')
+    teams = SelectMultipleField('Teams')

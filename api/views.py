@@ -287,4 +287,4 @@ def users_on_call(user):
 # @login_required
 def roles():
     if request.method == 'GET':
-        return jsonify(dict(data=dict(type='roles', attributes=dict(roles=current_app.config['ROLES']))))
+        return jsonify(dict(roles=current_app.config['ROLES']))
