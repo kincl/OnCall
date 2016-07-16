@@ -10,7 +10,8 @@ from util import _update_object_model, _str_to_date, \
                  _get_events_for_dates, _api_error, \
                  _can_add_event, _other_role, _is_role_valid
 
-api_app = Blueprint('api', __name__, url_prefix='/api/v1')
+api_app = Blueprint('api', __name__,
+                    url_prefix='/api/v1')
 
 @api_app.route('/')
 def api_help():

@@ -56,15 +56,15 @@ def _get_events_for_dates(team, start_date, end_date, exclude_event=None, predic
     events_start = Event.query.filter(start >= Event.start,
                                       start <= Event.end,
                                       Event.id != exclude_event,
-                                      Event.team_slug == team)
+                                      Event.team_id == team)
     events_end = Event.query.filter(end >= Event.start,
                                     end <= Event.end,
                                     Event.id != exclude_event,
-                                    Event.team_slug == team)
+                                    Event.team_id == team)
     events_inside = Event.query.filter(start <= Event.start,
                                        end >= Event.end,
                                        Event.id != exclude_event,
-                                       Event.team_slug == team)
+                                       Event.team_id == team)
 
     events = events_start.union(events_end, events_inside).all()
 
